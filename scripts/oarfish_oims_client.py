@@ -26,7 +26,9 @@ if __name__ == '__main__':
                         help='print debug messages as well as info and higher')
     args = parser.parse_args()
     
-    logger = logging.StreamHandler(sys.stdout)
+    logger = logging.getLogger()
+    handler = logging.StreamHandler(sys.stdout)
+    logger.addHandler(handler)
     if args.debug:
         logger.setLevel(logging.DEBUG)
     else:

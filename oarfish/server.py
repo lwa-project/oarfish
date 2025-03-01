@@ -68,8 +68,8 @@ class PredictionServer:
         ident = self.predictor.identify()
         return client_id, request_id, json.dumps(ident).encode()
         
-    @lru_cache(maxsize=8)
     @staticmethod
+    @lru_cache(maxsize=8)
     def _get_station_location(lon, lat, height):
         return EarthLocation(lon=lon,
                              lat=lat,
