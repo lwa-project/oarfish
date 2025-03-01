@@ -42,7 +42,7 @@ if __name__ == '__main__':
     
     with OrvilleImageDB(sys.argv[1]) as db:
         station = db.header.station
-        if isinstance(stations, bytes):
+        if isinstance(station, bytes):
             station = station.decode()
         station = station.lower()
             
