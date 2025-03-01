@@ -41,7 +41,7 @@ if __name__ == '__main__':
     logger.info("Server info: %s", str(client.identify()))
     
     with OrvilleImageDB(sys.argv[1]) as db:
-        station = db.header['station']
+        station = db.header.station
         try:
             station = station.decode()
         except AttributeError:
