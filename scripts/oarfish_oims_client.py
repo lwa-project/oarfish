@@ -78,6 +78,6 @@ if __name__ == '__main__':
         
             if i != 0 and i % 10 == 0:
                 t1 = time.time()
-                logger.info("Average speed is %:.1f ints/s (%.3f s per request)", i/(t1-t0), (t1-t0)/i)
+                logger.info("Average speed is %.1f ints/s (%.3f s per request)", i/(t1-t0), (t1-t0)/i)
                 
     client.end()
