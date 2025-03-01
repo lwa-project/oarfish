@@ -42,10 +42,9 @@ if __name__ == '__main__':
     
     with OrvilleImageDB(sys.argv[1]) as db:
         station = db.header.station
-        try:
+        if isinstance(stations, bytes):
             station = station.decode()
-        except AttributeError:
-            pass
+        station = station.lower()
             
         extra_info = {'station': station}
         if station == 'lwa1':
@@ -67,6 +66,9 @@ if __name__ == '__main__':
         for i in range(db.nint):
             info, data = db.read_image()
             info.update(extra_info)
+            for key in info:
+                if isinstance(info[key], bytes):
+                    info[key] = info[key].decode()
             data = data.data
             data[:,-1,:,:] = np.abs(data[:,-1,:,:])
             data = data[:,[0,-1],:,:]
