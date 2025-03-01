@@ -85,12 +85,12 @@ class PredictionServer:
         if 'lon' in metadata and 'lat' in metadata:
             location = self._get_station_location(metadata['lon'],
                                                   metadata['lat'],
-                                                  metadata['height'] if 'height' in metdata else 0.0)
+                                                  metadata['height'] if 'height' in metadata else 0.0)
             
         dataset = MultiChannelDataset(metadata,
                                       image_cube[:,0,:,:],
                                       image_cube[:,-1,:,:],
-                                      location=location)
+                                      station_location=location)
         
         results = self.predictor.predict_dataset(dataset)
         

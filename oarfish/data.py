@@ -86,11 +86,12 @@ class LWATVDataset(Dataset):
         ])
         
         # Default to LWA-SV location if none provided
-        self.location = station_location or EarthLocation(
-            lat=34.348358*u.deg, 
-            lon=-106.885783*u.deg, 
-            height=1477.8*u.m
-        )
+        if station_location is None:
+            station_location = EarthLocation(lat=34.348358*u.deg, 
+                                             lon=-106.885783*u.deg, 
+                                             height=1477.8*u.m
+                                            )
+        self.location = station_location
         
     @staticmethod
     def default_transform():
