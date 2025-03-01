@@ -13,6 +13,7 @@ setup(name                 = "oarfish",
       license              = 'BSD3',
       packages             = find_namespace_packages(),
       scripts              = glob.glob('scripts/*.py'),
+      include_package_data = True,
       python_requires      = '>=3.8',
       install_requires     = ['numpy', 'zmq'],
       zip_safe             = False
