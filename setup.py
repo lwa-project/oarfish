@@ -14,6 +14,6 @@ setup(name                 = "oarfish",
       packages             = find_namespace_packages(),
       scripts              = glob.glob('scripts/*.py'),
       python_requires      = '>=3.8',
-      install_requires     = ['numpy',],
+      install_requires     = ['numpy', 'zmq'],
       zip_safe             = False
 )
