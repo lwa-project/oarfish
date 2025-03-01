@@ -46,7 +46,11 @@ if __name__ == '__main__':
             pass
             
         extra_info = {'station': station}
-        if station == 'lwasv':
+        if station == 'lwa1':
+            extra_info['lon'] = '-107.62835d'
+            extra_info['lat'] = '34.068894d'
+            extra_info['height'] = '2133.6m'
+        elif station == 'lwasv':
             extra_info['lon'] = '-106.885783d'
             extra_info['lat'] = '34.348358d'
             extra_info['height'] = '1477.8m'
