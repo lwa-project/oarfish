@@ -58,6 +58,8 @@ if __name__ == '__main__':
             extra_info['lon'] = '-107.640d'
             extra_info['lat'] = '34.247d'
             extra_info['height'] = '2134m'
+        else:
+            self.log.warn(f"Unknown station '{station}', positions will be suspect")
             
         t0 = time.time()
         for i in range(db.nint):
