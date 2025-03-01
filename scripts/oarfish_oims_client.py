@@ -38,7 +38,7 @@ if __name__ == '__main__':
     client = PredictionClient(args.address, args.port,
                               timeout=args.timeout, logger=logger)
     client.start()
-    self.logger("Server info: %s", str(client.identify()))
+    logger.info("Server info: %s", str(client.identify()))
     
     with OrvilleImageDB(sys.argv[1]) as db:
         station = dh.header['station']
@@ -61,12 +61,13 @@ if __name__ == '__main__':
             extra_info['lat'] = '34.247d'
             extra_info['height'] = '2134m'
         else:
-            self.log.warn(f"Unknown station '{station}', positions will be suspect")
+            logger.warn(f"Unknown station '{station}', positions will be suspect")
             
         t0 = time.time()
         for i in range(db.nint):
-            info, data = db.read_image(return_masked=False)
+            info, data = db.read_image()
             info.update(extra_info)
+            data = data.data
             data[:,-1,:,:] = np.abs(data[:,-1,:,:])
             data = data[:,[0,-1],:,:]
             
