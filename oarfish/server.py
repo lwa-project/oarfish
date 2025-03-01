@@ -2,6 +2,7 @@ import zmq
 import json
 import queue
 import numpy as np
+from functools import lru_cache
 
 from torch.utils.data import DataLoader
 
@@ -67,6 +68,13 @@ class PredictionServer:
         ident = self.predictor.identify()
         return client_id, request_id, json.dumps(ident).encode()
         
+    @lru_cache(maxsize=8)
+    @staticmethod
+    def _get_station_location(lon, lat, height):
+        return EarthLocation(lon=lon,
+                             lat=lat,
+                             height=height)
+        
     def process(self, client_id, request_id, metadata, image_cube):
         metadata = json.loads(metadata)
         image_cube = np.frombuffer(image_cube, dtype=np.float32)
@@ -74,10 +82,10 @@ class PredictionServer:
         image_cube = image_cube.copy()
         
         location = None
-        if 'lon' in metadata and 'lat' in metdata:
-            location = EarthLocation(lon=metadata['lon'],
-                                     lat=metadata['lat'],
-                                     height=metadata['height'] if height in metadata else 0)
+        if 'lon' in metadata and 'lat' in metadata:
+            location = self._get_station_location(metadata['lon'],
+                                                  metadata['lat'],
+                                                  metadata['height'] if 'height' in metdata else 0.0)
             
         dataset = MultiChannelDataset(metadata,
                                       image_cube[:,0,:,:],
