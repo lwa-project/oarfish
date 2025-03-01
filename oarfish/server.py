@@ -5,6 +5,8 @@ import numpy as np
 
 from torch.utils.data import DataLoader
 
+from astropy.coordinates import EarthLocation
+
 from .data import SingleChannelDataset, MultiChannelDataset
 
 class PredictionServer:
@@ -71,9 +73,17 @@ class PredictionServer:
         image_cube = image_cube.reshape(*metadata['image_cube_shape'])
         image_cube = image_cube.copy()
         
+        location = None
+        if 'lon' in metadata and 'lat' in metdata:
+            location = EarthLocation(lon=metadata['lon'],
+                                     lat=metadata['lat'],
+                                     height=metadata['height'] if height in metadata else 0)
+            
         dataset = MultiChannelDataset(metadata,
-                                        image_cube[:,0,:,:],
-                                        image_cube[:,-1,:,:])
+                                      image_cube[:,0,:,:],
+                                      image_cube[:,-1,:,:],
+                                      location=location)
+        
         results = self.predictor.predict_dataset(dataset)
         
         return client_id, request_id, json.dumps(results).encode()

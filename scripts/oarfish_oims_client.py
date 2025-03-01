@@ -39,9 +39,26 @@ if __name__ == '__main__':
     self.logger("Server info: %s", str(client.identify()))
     
     with OrvilleImageDB(sys.argv[1]) as db:
+        station = dh.header['station']
+        try:
+            station = station.decode()
+        except AttributeError:
+            pass
+            
+        extra_info = {'station': station}
+        if station == 'lwasv':
+            extra_info['lon'] = '-106.885783d'
+            extra_info['lat'] = '34.348358d'
+            extra_info['height'] = '1477.8m'
+        elif station == 'lwana':
+            extra_info['lon'] = '-107.640d'
+            extra_info['lat'] = '34.247d'
+            extra_info['height'] = '2134m'
+            
         t0 = time.time()
         for i in range(db.nint):
             info, data = db.read_image(return_masked=False)
+            info.update(extra_info)
             data[:,-1,:,:] = np.abs(data[:,-1,:,:])
             data = data[:,[0,-1],:,:]
             
@@ -53,4 +70,3 @@ if __name__ == '__main__':
                 self.log.info("Average speed is %:.1f ints/s (%.3f s per request)", i/(t1-t0), (t1-t0)/i)
                 
     client.end()
-
