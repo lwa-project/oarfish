@@ -23,7 +23,7 @@ second stage is good for understanding *why* an image is bad but it also has tro
 no RFI from low RFI from medium RFI.
 
 To overcome this oarfish introduces a "quality score" which combines the two classifier results into
-a single number.  It take the binary classification confidence (downweighted by 50%) and combines it
+a single number.  It take the binary classification confidence (downweighted by 25%) and combines it
 with the top two (by confidence) results from the multi-class stage to create a single number that
 ranges from 0 (bad) to 1 (good).  This number is then mapped to a text label that is one of:
  * good
