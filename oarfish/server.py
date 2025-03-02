@@ -30,14 +30,14 @@ class PredictionServer:
         
         if self.logger:
             self.logger.info(f"Started prediction server on {self.address} port {self.port}")
-        
+            
     def end(self):
         self.sock.close()
         self.ctx.term()
         
         if self.logger:
             self.logger.info(f"Stopped prediction server on {self.address} port {self.port}")
-        
+            
     def receive(self):
         try:
             parts = self.sock.recv_multipart()
@@ -61,7 +61,7 @@ class PredictionServer:
             if self.logger:
                 self.logger.warn(f"Failed to send results on {results[1]} to {results[0]}: {str(e)}")
             return False
-        
+            
         return True
     
     def identify(self, client_id, request_id):
