@@ -125,6 +125,8 @@ class DualModelPredictor:
             self.logger.info(f"Loaded binary model with validation accuracy: {self.binary_val_acc:.2f}%")
             self.logger.info(f"Loaded multi model with validation accuracy: {self.multi_val_acc:.2f}%")
             
+        self._batches_processed = 0
+            
     def identify(self):
         ident = {'name': 'DualModelPredictor',
                  'binary_model': self.binary_path,
@@ -181,6 +183,10 @@ class DualModelPredictor:
             
         return q, final
     
+    def empty_cache(self):
+        if self.device.startswith('cuda'):
+            torch.cuda.empty_cache()
+            
     def predict_dataset(self, dataset, batch_size=None):
         results = []
         
@@ -192,10 +198,10 @@ class DualModelPredictor:
         # Process batches
         with torch.no_grad():
             for batch_idx, batch_data in enumerate(dataloader):
-                if batch_idx % 10 == 0:
-                    if self.device == 'cuda':
-                        torch.cuda.empty_cache()
-                        
+                self._batches_processed += 1
+                if self._batches_processed % 10 == 0:
+                    self.empty_cache()
+                    
                 img_tensors, hrz_tensors, astro_tensors, info_batch = batch_data
                 
                 # Move to device
