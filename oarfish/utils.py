@@ -1,8 +1,11 @@
 import numpy as np
 from scipy.ndimage import gaussian_filter
 from functools import lru_cache
+from typing import Tuple, Union, List, Dict, Optional
 
-from astropy.coordinates import SkyCoord, get_body
+from astropy.coordinates import SkyCoord, get_body, EarthLocation
+from astropy.time import Time
+from astropy.wcs import WCS
 
 
 HORIZON_ALT_DEG = 30.0
@@ -24,7 +27,7 @@ EXT_SOURCES = {'HerA': SkyCoord('16h51m07.989s',  '4d59m35.55s', frame='icrs'),
 
 
 @lru_cache(maxsize=32)
-def _topo_wcs_to_altaz(xsize, ysize, topo_wcs):
+def _topo_wcs_to_altaz(xsize: int, ysize: int, topo_wcs: WCS) -> Tuple[np.ndarray, np.ndarray]:
     """
     Helper function to cache successive WCS lookups to get the azimuth and
     altitude of each pixel in the image (in degrees).
@@ -41,7 +44,7 @@ def _topo_wcs_to_altaz(xsize, ysize, topo_wcs):
 
 
 @lru_cache(maxsize=32)
-def _wcs_to_skycoord(xsize, ysize, wcs):
+def _wcs_to_skycoord(xsize: int, ysize: int, wcs; WCS) -> SkyCoord:
     """
     Helper function to cache successive WCS lookups to get the RA and dec
     of each pixel in the image (in degrees).
@@ -53,7 +56,7 @@ def _wcs_to_skycoord(xsize, ysize, wcs):
     return wcs.pixel_to_world(y, x)
 
 
-def extract_sky(stokes_i, stokes_v, topo_wcs):
+def extract_sky(stokes_i: np.ndarray, stokes_v: np.ndarray, topo_wcs: WCS) -> Tuple[np.ndarray, np.ndarray]:
     """
     Return the 1D numpy.ndarray with the sky values from the Stokes I and |V|
     images.
@@ -85,7 +88,7 @@ def extract_sky(stokes_i, stokes_v, topo_wcs):
     return sky_i, sky_v
 
 
-def characterize_sky(sky_i, sky_v):
+def characterize_sky(sky_i: np.ndarray, sky_v: np.ndarray) -> Union[Dict, List[Dict]]:
     """
     Given the extracted Stokes I and |V| sky, compute a few metrics
     to characterize it.  They are:
@@ -134,7 +137,7 @@ def characterize_sky(sky_i, sky_v):
     return results
 
 
-def extract_horizon(stokes_i, stokes_v, topo_wcs):
+def extract_horizon(stokes_i: np.ndarray, stokes_v: np.ndarray, topo_wcs: WCS) -> Tuple[np.ndarray, np.ndarray]:
     """
     Return the 1D numpy.ndarrays with the horizon values from the Stokes I
     and |V| images.
@@ -166,7 +169,7 @@ def extract_horizon(stokes_i, stokes_v, topo_wcs):
     return hrz_i, hrz_v
 
 
-def characterize_horizon(hrz_i, hrz_v):
+def characterize_horizon(hrz_i: np.ndarray, hrz_v: np.ndarray) -> Union[Dict, List[Dict]]:
     """
     Given the extracted Stokes I and |V| horizon, compute a few metrics
     to characterize it.  They are:
@@ -224,7 +227,7 @@ def characterize_horizon(hrz_i, hrz_v):
     return results
 
 
-def extract_1d_horizon(stokes_i, stokes_v, topo_wcs):
+def extract_1d_horizon(stokes_i: np.ndarray, stokes_v: np.ndarray, topo_wcs: WCS) -> Tuple[np.ndarray, np.ndarray]:
     """
     Return the 1D numpy.ndarrays with the horizon values averaged over 0 to 30
     degrees elevation from the Stokes I and |V| images.
@@ -255,7 +258,7 @@ def extract_1d_horizon(stokes_i, stokes_v, topo_wcs):
     return hrz_i, hrz_v
 
 
-def extract_beyond_horizon(stokes_i, stokes_v, topo_wcs):
+def extract_beyond_horizon(stokes_i: np.ndarray, stokes_v: np.ndarray, topo_wcs: WCS) -> Tuple[np.ndarray, np.ndarray]:
     """
     Return the 1D numpy.ndarrays with the values from beyond the horizon from
     the Stokes I and |V| images.
@@ -285,13 +288,13 @@ def extract_beyond_horizon(stokes_i, stokes_v, topo_wcs):
     return byd_i, byd_v
 
 
-def characterize_beyond_horizon(byd_i, byd_v):
+def characterize_beyond_horizon(byd_i: np.ndarray, byd_v: np.ndarray) -> Union[Dict, List[Dict]]:
     return characterize_horizon(byd_i, byd_v)
 
 
-def extract_sources(stokes_i, stokes_v, timestamp, wcs,
-                    location=None,
-                    srcs=['CygA', 'CasA', 'TauA', 'VirA']):
+def extract_sources(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time, wcs; WCS,
+                    location: Optional[EarthLocation]=None,
+                    srcs: List[str]=['CygA', 'CasA', 'TauA', 'VirA']) -> Union[Dict, List[Dict]]:
     """
     Return a set of postage stamps (both Stokes I and |V|) for the list of
     provided sources.
@@ -335,7 +338,8 @@ def extract_sources(stokes_i, stokes_v, timestamp, wcs,
     return results
 
 
-def extract_sun(stokes_i, stokes_v, timestamp, wcs, location=None):
+def extract_sun(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time, wcs: WCS,
+                location: Optional[EarthLocation]=None) -> Union[Dict, List[Dict]]:
     """
     Similar to extract_sources but only works on the Sun.
     """
@@ -371,7 +375,8 @@ def extract_sun(stokes_i, stokes_v, timestamp, wcs, location=None):
     return results
 
 
-def extract_jupiter(stokes_i, stokes_v, timestamp, wcs, location=None):
+def extract_jupiter(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time, wcs: WCS,
+                    location: Optional[EarthLocation]=None) -> Union[Dict, List[Dict]]:
     """
     Similar to extract_sources but only works on Jupiter.
     """
@@ -407,7 +412,7 @@ def extract_jupiter(stokes_i, stokes_v, timestamp, wcs, location=None):
     return results
 
 
-def characterize_sources(regions):
+def characterize_sources(regions: Union[Dict, List[Dict]]) -> Union[Dict, List[Dict]]:
     """
     Given a dictionary of postage stamps, characterize the sources and return
     a set of metrics.  The are:

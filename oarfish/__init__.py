@@ -3,8 +3,9 @@ import inspect
 import sys
 import os
 from pathlib import Path
+from typing import List
 
-def _get_code_checksum():
+def _get_code_checksum() -> List[str]:
     """Create a checksum of all relevant module files"""
     modules = ['data', 'utils', 'train', 'classify', 'predict']
     checksums = []
