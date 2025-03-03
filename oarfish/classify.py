@@ -1,9 +1,11 @@
+from typing import Optional, List
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 class BaseLWATVClassifier(nn.Module):
-    def __init__(self, num_classes=2, class_names=None):
+    def __init__(self, num_classes: int=2, class_names: Optional[List[str]]=None):
         super().__init__()
         self.num_classes = num_classes
         if class_names is not None:
@@ -166,11 +168,11 @@ class BaseLWATVClassifier(nn.Module):
         
         return self.final_classifier(final_features)
     
-    def get_class_name(self, class_idx):
+    def get_class_name(self, class_idx: int) -> str:
         """Convert class index to class name"""
         return self.class_names[class_idx]
     
-    def get_class_idx(self, class_name):
+    def get_class_idx(self, class_name: str) -> int:
         """Convert class name to class index"""
         return self.class_mapping[class_name]
 
