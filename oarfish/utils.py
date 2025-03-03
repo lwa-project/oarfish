@@ -44,7 +44,7 @@ def _topo_wcs_to_altaz(xsize: int, ysize: int, topo_wcs: WCS) -> Tuple[np.ndarra
 
 
 @lru_cache(maxsize=32)
-def _wcs_to_skycoord(xsize: int, ysize: int, wcs; WCS) -> SkyCoord:
+def _wcs_to_skycoord(xsize: int, ysize: int, wcs: WCS) -> SkyCoord:
     """
     Helper function to cache successive WCS lookups to get the RA and dec
     of each pixel in the image (in degrees).
@@ -292,7 +292,7 @@ def characterize_beyond_horizon(byd_i: np.ndarray, byd_v: np.ndarray) -> Union[D
     return characterize_horizon(byd_i, byd_v)
 
 
-def extract_sources(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time, wcs; WCS,
+def extract_sources(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time, wcs: WCS,
                     location: Optional[EarthLocation]=None,
                     srcs: List[str]=['CygA', 'CasA', 'TauA', 'VirA']) -> Union[Dict, List[Dict]]:
     """
