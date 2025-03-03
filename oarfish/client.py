@@ -71,36 +71,51 @@ class PredictionClient:
             parts = []
         parts = [request_id,] + parts
         
-        poller = zmq.Poller()
-        poller.register(self.sock, zmq.POLLIN)
-        
+        poller = None
         try:
-            self.sock.send_multipart(parts)
-            start_time = time.time()
+            poller = zmq.Poller()
+            poller.register(self.sock, zmq.POLLIN)
             
-            while time.time() - start_time < self.timeout:
-                events = dict(poller.poll(100))
+            try:
+                self.sock.send_multipart(parts)
+            except zmq.error.Again as e:
+                if self.logger:
+                    self.logger.warn(f"Failed to send to prediction server: {str(e)}")
+                return None
                 
-                if self.sock in events and events[self.sock] == zmq.POLLIN:
-                    rrequest_id, results = self.sock.recv_multipart()
-                    if rrequest_id == request_id:
-                        return results
-                        
-                    else:
-                        rrequest_id = rrequest_id.decode()
-                        if self.logger:
-                            self.logger.info(f"Discarding response to request ID {rrequest_id}")
+            start_time = time.time()
+            while time.time() - start_time < self.timeout:
+                try:
+                    events = dict(poller.poll(100))
+                    
+                    if self.sock in events and events[self.sock] == zmq.POLLIN:
+                        rrequest_id, results = self.sock.recv_multipart()
+                        if rrequest_id == request_id:
+                            return results
                             
-        except zmq.error.Again as e:
-            print('fail here')
+                        else:
+                            rrequest_id = rrequest_id.decode()
+                            if self.logger:
+                                self.logger.info(f"Discarding response to request ID {rrequest_id}")
+                                
+                except zmq.error.Again:
+                    continue
+                    
             if self.logger:
-                self.logger.warn(f"Failed to send to prediction server: {str(e)}")
+                self.logger.warn(f"Request {request_id} timed out after {self.timeout}s")
             return None
             
         except Exception as e:
             print(f"Error on {request_id}: {str(e)}")
             return None
             
+        finally:
+            try:
+                if poller is not None:
+                    poller.unregister(self.sock)
+            except:
+                pass
+                
     def identify(self) -> Optional[Dict]:
         """
         Query the prediction server for information about how it makes
