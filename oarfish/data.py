@@ -1,6 +1,6 @@
 import numpy as np
 from copy import deepcopy
-from typing import Tuple, Dict, Any, Optional
+from typing import Tuple, Dict, Any, Optional, List
 
 import torch
 from torch.utils.data import Dataset
@@ -16,7 +16,7 @@ from .utils import *
 
 
 
-def info_to_wcs(info: Dict[str,Any], image_size: Optional[int]=None) -> Tuple[WCS,WCS]:
+def info_to_wcs(info: Dict[str,Any], image_size: Optional[int]=None) -> Tuple[WCS, WCS]:
     """
     Given a .oims metadata dictionary, construct RA/dec and altitude/azimuth
     WCS instances and return them.
@@ -54,7 +54,7 @@ def info_to_wcs(info: Dict[str,Any], image_size: Optional[int]=None) -> Tuple[WC
     
 
 
-def load_lwatv_data(filename: str) -> Tuple[np.ndarray,np.ndarray,Dict[str,Any]]:
+def load_lwatv_data(filename: str) -> Tuple[np.ndarray, np.ndarray, Dict[str,Any]]:
     """
     Given a .npz snapshot from a LWATV .oims file, load in Stokes I and |V|
     and return them along with the frame metadata.
@@ -72,7 +72,8 @@ def load_lwatv_data(filename: str) -> Tuple[np.ndarray,np.ndarray,Dict[str,Any]]
 
 
 class LWATVDataset(Dataset):
-    def __init__(self, image_paths, labels=None, transform=None, station_location=None):
+    def __init__(self, image_paths: Union[str, List[str]], labels: Optional[int]=None,
+                       transform: Optional[Any]=None, station_location: Optional[EarthLocation]=None):
         if not isinstance(image_paths, (tuple, list)):
             image_paths = [image_paths]
         self.image_paths = image_paths
@@ -94,7 +95,7 @@ class LWATVDataset(Dataset):
         self.location = station_location
         
     @staticmethod
-    def default_transform():
+    def default_transform() -> transforms.Compose:
         return transforms.Compose([
             transforms.Resize((256, 256)),  # Resize to handle variable sizes
             # No need for ToTensor() since we're already converting numpy to tensor
@@ -102,7 +103,9 @@ class LWATVDataset(Dataset):
         ])
     
     @staticmethod
-    def _process_image_pair(metadata, stokes_i, stokes_v, location=None, transform=None):
+    def _process_image_pair(metadata: Dict[str, Any], stokes_i: np.ndarray, stokes_v: np.ndarray,
+                            location: Optional[EarthLocation]=None,
+                            transform: Optional[Any]=None) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         # Build up the WCS
         wcs, topo_wcs = info_to_wcs(metadata, image_size=stokes_i.shape[0])
         
@@ -181,10 +184,11 @@ class LWATVDataset(Dataset):
         
         return img_tensor, hrz_tensor, astro_tensor
     
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.image_paths)
     
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> Union[Tuple[torch.Tensor, torch.Tensor, torch.Tensor], 
+                                             Tuple[torch.Tensor, torch.Tensor, torch.Tensor, int]]:
         img_path = self.image_paths[idx]
         
         # Load data
@@ -208,8 +212,9 @@ class LWATVDataset(Dataset):
 
 
 class SingleChannelDataset(LWATVDataset):
-    def __init__(self, metadata, stokes_i, stokes_v,
-                 labels=None, transform=None, station_location=None):
+    def __init__(self, metadata: Dict[str, Any], stokes_i: np.ndarray, stokes_v: np.ndarray,
+                       labels: Optional[int]=None, transform: Optional[Any]=None,
+                       station_location: Optional[EarthLocation]=None):
         super().__init__([''], labels=labels, transform=transform,
                          station_location=station_location)
         if len(stokes_i.shape) != 2 or len(stokes_v.shape) != 2:
@@ -218,7 +223,8 @@ class SingleChannelDataset(LWATVDataset):
         self._stokes_i = stokes_i
         self._stokes_v = stokes_v
         
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> Union[Tuple[torch.Tensor, torch.Tensor, torch.Tensor], 
+                                             Tuple[torch.Tensor, torch.Tensor, torch.Tensor, int]]:
         if idx != 0:
             raise RuntimeError("SingleChannelDataset only contains a single integration/channel")
             
@@ -235,8 +241,9 @@ class SingleChannelDataset(LWATVDataset):
 
 
 class MultiChannelDataset(LWATVDataset):
-    def __init__(self, metadata, stokes_i, stokes_v,
-                 labels=None, transform=None, station_location=None):
+    def __init__(self, metadata: Dict[str, Any], stokes_i: np.ndarray, stokes_v: np.ndarray,
+                       labels: Optional[int]=None, transform: Optional[Any]=None,
+                       station_location: Optional[EarthLocation]=None):
         nchan = stokes_i.shape[0]
         super().__init__(['']*nchan, labels=labels, transform=transform,
                          station_location=station_location)
@@ -250,7 +257,9 @@ class MultiChannelDataset(LWATVDataset):
         self._cache = {}
         
     @staticmethod
-    def _process_image_stack(metadata, stokes_i, stokes_v, location=None, transform=None):
+    def _process_image_stack(metadata: Dict[str, Any], stokes_i: np.ndarray, stokes_v: np.ndarrat,
+                             location: Optional[EarthLocation]=None,
+                             transform: Optional[Any]=None) -> List[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
         if len(stokes_i.shape) == 2:
             stokes_i = stokes_i.reshape(1, *stokes_i.shape)
             stokes_v = stokes_v.reshape(1, *stokes_v.shape)
@@ -342,7 +351,8 @@ class MultiChannelDataset(LWATVDataset):
         
         return finals
         
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> Union[Tuple[torch.Tensor, torch.Tensor, torch.Tensor], 
+                                             Tuple[torch.Tensor, torch.Tensor, torch.Tensor, int]]:
         if idx > self._stokes_i.shape[0]:
             raise RuntimeError("Requested too many channels for this data set")
             

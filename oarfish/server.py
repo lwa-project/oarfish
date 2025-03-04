@@ -2,7 +2,9 @@ import zmq
 import json
 import queue
 import numpy as np
+from logging import Logger
 from functools import lru_cache
+from typing import Optional, Any, Tuple
 
 from torch.utils.data import DataLoader
 
@@ -11,8 +13,8 @@ from astropy.coordinates import EarthLocation
 from .data import SingleChannelDataset, MultiChannelDataset
 
 class PredictionServer:
-    def __init__(self, address='127.0.0.1', port=5555, timeout=1,
-                 predictor=None, logger=None):
+    def __init__(self, address: str='127.0.0.1', port: int=5555, timeout: float=1.0,
+                 predictor: Optional[Any]=None, logger: Optional[Logger]=None):
         self.address = address
         self.port = port
         self.timeout = timeout
@@ -38,7 +40,7 @@ class PredictionServer:
         if self.logger:
             self.logger.info(f"Stopped prediction server on {self.address} port {self.port}")
             
-    def receive(self):
+    def receive(self) -> bool:
         try:
             parts = self.sock.recv_multipart()
             
@@ -64,18 +66,18 @@ class PredictionServer:
             
         return True
     
-    def identify(self, client_id, request_id):
+    def identify(self, client_id: bytes, request_id: bytes) -> Tuple[bytes, bytes, bytes]:
         ident = self.predictor.identify()
         return client_id, request_id, json.dumps(ident).encode()
         
     @staticmethod
     @lru_cache(maxsize=8)
-    def _get_station_location(lon, lat, height):
+    def _get_station_location(lon: str, lat: str, height: Union[str,float]) -> EarthLocation:
         return EarthLocation(lon=lon,
                              lat=lat,
                              height=height)
         
-    def process(self, client_id, request_id, metadata, image_cube):
+    def process(self, client_id: bytes, request_id: bytes, metadata: bytes, image_cube: bytes) -> Tuple[bytes, bytes, bytes]:
         metadata = json.loads(metadata)
         image_cube = np.frombuffer(image_cube, dtype=np.float32)
         image_cube = image_cube.reshape(*metadata['image_cube_shape'])

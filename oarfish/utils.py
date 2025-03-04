@@ -88,7 +88,8 @@ def extract_sky(stokes_i: np.ndarray, stokes_v: np.ndarray, topo_wcs: WCS) -> Tu
     return sky_i, sky_v
 
 
-def characterize_sky(sky_i: np.ndarray, sky_v: np.ndarray) -> Union[Dict, List[Dict]]:
+def characterize_sky(sky_i: np.ndarray, sky_v: np.ndarray) -> Union[Dict[str, float],
+                                                                    List[Dict[str, float]]]:
     """
     Given the extracted Stokes I and |V| sky, compute a few metrics
     to characterize it.  They are:
@@ -169,7 +170,8 @@ def extract_horizon(stokes_i: np.ndarray, stokes_v: np.ndarray, topo_wcs: WCS) -
     return hrz_i, hrz_v
 
 
-def characterize_horizon(hrz_i: np.ndarray, hrz_v: np.ndarray) -> Union[Dict, List[Dict]]:
+def characterize_horizon(hrz_i: np.ndarray, hrz_v: np.ndarray) -> Union[Dict[str, float],
+                                                                        List[Dict[str, float]]]:
     """
     Given the extracted Stokes I and |V| horizon, compute a few metrics
     to characterize it.  They are:
@@ -288,13 +290,15 @@ def extract_beyond_horizon(stokes_i: np.ndarray, stokes_v: np.ndarray, topo_wcs:
     return byd_i, byd_v
 
 
-def characterize_beyond_horizon(byd_i: np.ndarray, byd_v: np.ndarray) -> Union[Dict, List[Dict]]:
+def characterize_beyond_horizon(byd_i: np.ndarray, byd_v: np.ndarray) -> Union[Dict[str, float],
+                                                                               List[Dict[str, float]]]:
     return characterize_horizon(byd_i, byd_v)
 
 
 def extract_sources(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time, wcs: WCS,
                     location: Optional[EarthLocation]=None,
-                    srcs: List[str]=['CygA', 'CasA', 'TauA', 'VirA']) -> Union[Dict, List[Dict]]:
+                    srcs: List[str]=['CygA', 'CasA', 'TauA', 'VirA']) -> Union[Dict[str, List[np.ndarray]],
+                                                                               List[Dict[str, np.ndarray]]]::
     """
     Return a set of postage stamps (both Stokes I and |V|) for the list of
     provided sources.
@@ -339,7 +343,8 @@ def extract_sources(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time,
 
 
 def extract_sun(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time, wcs: WCS,
-                location: Optional[EarthLocation]=None) -> Union[Dict, List[Dict]]:
+                location: Optional[EarthLocation]=None) -> Union[Dict[str, List[np.ndarray]],
+                                                                 List[Dict[str, np.ndarray]]]::
     """
     Similar to extract_sources but only works on the Sun.
     """
@@ -376,7 +381,8 @@ def extract_sun(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time, wcs
 
 
 def extract_jupiter(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time, wcs: WCS,
-                    location: Optional[EarthLocation]=None) -> Union[Dict, List[Dict]]:
+                    location: Optional[EarthLocation]=None) -> Union[Dict[str, List[np.ndarray]],
+                                                                     List[Dict[str, np.ndarray]]]:
     """
     Similar to extract_sources but only works on Jupiter.
     """
@@ -412,7 +418,8 @@ def extract_jupiter(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time,
     return results
 
 
-def characterize_sources(regions: Union[Dict, List[Dict]]) -> Union[Dict, List[Dict]]:
+def characterize_sources(regions: Union[Dict[str, float], List[Dict[str, float]]]) -> Union[Dict[str, float],
+                                                                                            List[Dict[str, float]]]:
     """
     Given a dictionary of postage stamps, characterize the sources and return
     a set of metrics.  The are:

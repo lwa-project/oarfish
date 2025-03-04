@@ -58,7 +58,7 @@ class PredictionClient:
         if self.logger:
             self.logger.info("Disconnected from prediction server")
             
-    def _send_and_recieve(self, parts: Optional[List]=None) -> Optional[List]:
+    def _send_and_recieve(self, parts: Optional[List[bytes]]=None) -> Optional[bytes]:
         """
         Backend function to send off a request and wait for a reply.
         """
@@ -116,7 +116,7 @@ class PredictionClient:
             except:
                 pass
                 
-    def identify(self) -> Optional[Dict]:
+    def identify(self) -> Optional[Dict[str, Any]]:
         """
         Query the prediction server for information about how it makes
         predictions.
@@ -130,8 +130,8 @@ class PredictionClient:
         return ident
         
     @staticmethod
-    def _trim_results(results: List[Dict[str,Any]],
-                      to_keep: List[str]=['quality_score', 'final_label']):
+    def _trim_results(results: List[Dict[str, Any]],
+                      to_keep: List[str]=['quality_score', 'final_label']) -> List[Dict[str, Any]]:
         """
         Prune a full results dictionary down to only the requested keys.
         """
@@ -147,8 +147,9 @@ class PredictionClient:
             trimmed_results.append(trimmed)
         return trimmed_results
         
-    def send(self, metadata: Dict[str,Any], image_cube: np.ndarray,
-                   full_output: bool=False) -> Optional[Union[Dict, List[Dict]]]:
+    def send(self, metadata: Dict[str, Any], image_cube: np.ndarray,
+                   full_output: bool=False) -> Optional[Union[Dict[str, Any],
+                                                              List[Dict[str, Any]]]]:
         
         """
         Given a metadata dictionary and an array containing Stokes I and |V|

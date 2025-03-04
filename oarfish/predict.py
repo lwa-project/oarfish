@@ -1,15 +1,18 @@
 from pathlib import Path
 import os
 import time
+from logging import Logger
+from typing import Tuple, Dict, Any, Optional, Tuple, List
 
 import torch
 from torch.utils.data import DataLoader
 
 from . import CODE_CHECKSUM
 from .data import LWATVDataset
-from .classify import BinaryLWATVClassifier, MultiLWATVClassifier
+from .classify import *
 
-def predict_image(model, dataset, device='cuda' if torch.cuda.is_available() else 'cpu'):
+def predict_image(model: BaseLWATVClassifier, dataset: LWATVDataset,
+                  device: str='cuda' if torch.cuda.is_available() else 'cpu') -> Tuple[int, float]:
     """Predict a single image"""
     model.eval()
     img_tensor, horizon_tensor, astro_tensor = dataset[0]  # Unpack the tuple
@@ -28,8 +31,9 @@ def predict_image(model, dataset, device='cuda' if torch.cuda.is_available() els
     class_name = model.get_class_name(prediction)
     return prediction, confidence
 
-def predict_with_uncertainty(model, dataset, confidence_threshold=0.8, 
-                             device='cuda' if torch.cuda.is_available() else 'cpu'):
+def predict_with_uncertainty(model: BaseLWATVClassifier, dataset: LWATVDataset,
+                             confidence_threshold: float=0.8, 
+                             device: str='cuda' if torch.cuda.is_available() else 'cpu') -> Dict[str, Any]:
     """
     Predict a single image with uncertainty estimation
     
@@ -84,7 +88,8 @@ class DualModelPredictor:
     and computing a combined quality score
     """
     
-    def __init__(self, binary_model_path, multi_model_path, device=None, logger=None):
+    def __init__(self, binary_model_path: str, multi_model_path: str,
+                       device: Optional[str]=None, logger: Optional[Logger]=None):
         """
         Initialize the dual model predictor
         
@@ -127,7 +132,7 @@ class DualModelPredictor:
             
         self._batches_processed = 0
             
-    def identify(self):
+    def identify(self) -> Dict[str, Any]:
         ident = {'name': 'DualModelPredictor',
                  'binary_model': self.binary_path,
                  'binary_val_acc': self.binary_val_acc,
@@ -139,7 +144,8 @@ class DualModelPredictor:
                 }
         return ident
         
-    def compute_quality_score(self, binary_pred, binary_conf, multi_pred, multi_probs):
+    def compute_quality_score(self, binary_pred: int, binary_conf: float,
+                                    multi_pred: int, multi_probs: torch.Tensor) -> Tuple[float, str]:
         """
         Compute quality score based on predictions from both models
         
@@ -187,7 +193,7 @@ class DualModelPredictor:
         if self.device.startswith('cuda'):
             torch.cuda.empty_cache()
             
-    def predict_dataset(self, dataset, batch_size=None):
+    def predict_dataset(self, dataset: LWATVDataset, batch_size: Optional[int]=None) -> List[Dict[str, Any]]:
         results = []
         
         if batch_size is None:

@@ -117,7 +117,7 @@ class BaseLWATVClassifier(nn.Module):
             nn.Linear(64, num_classes)
         )
     
-    def forward(self, image, horizon, astro_features):
+    def forward(self, image: torch.Tensor, horizon: torch.Tensor, astro_features: torch.Tensor) -> torch.Tensor:
         # Process each specialized branch
         source_features = self.source_analyzer(image)
         pattern_features = self.pattern_analyzer(image)

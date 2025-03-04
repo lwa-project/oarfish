@@ -3,7 +3,7 @@ import logging
 import numpy as np
 from collections import Counter
 
-from typing import List, Type, Optional
+from typing import List, Tuple, Optional, Type
 
 import torch
 import torch.nn as nn
@@ -20,7 +20,9 @@ from .classify import BinaryLWATVClassifier, MultiLWATVClassifier
 logger = logging.getLogger(__name__)
 
 class ModelTrainer:
-    def __init__(self, model, num_epochs=10, num_steps=10, device='cuda' if torch.cuda.is_available() else 'cpu', tag=None):
+    def __init__(self, model: nn.Model, num_epochs: int=10, num_steps: int=10,
+                       device: str='cuda' if torch.cuda.is_available() else 'cpu',
+                       tag: Optional[str]=None):
         self.model = model.to(device)
         self.num_epochs = num_epochs
         self.num_steps = num_steps
@@ -54,7 +56,8 @@ class ModelTrainer:
         self.best_epoch = 0
         self.epochs_without_improvement = 0
         
-    def save_checkpoint(self, epoch, val_acc, val_loss, val_cmatrix, path='checkpoints'):
+    def save_checkpoint(self, epoch: int, val_acc: float, val_loss: float, val_cmatrix: torch.Tensor,
+                              path: str='checkpoints'):
         """Save model checkpoint"""
         if self.tag:
             path += f"_{self.tag}"
@@ -76,7 +79,7 @@ class ModelTrainer:
             torch.save(checkpoint, os.path.join(path, 'best_model.pt'))
             print(f"New best model saved! Validation accuracy: {val_acc:.2f}%")
             
-    def load_checkpoint(self, checkpoint_path):
+    def load_checkpoint(self, checkpoint_path: str) -> int:
         """Load model checkpoint"""
         checkpoint = torch.load(checkpoint_path)
         if 'code_checksum' in checkpoint:
@@ -88,7 +91,7 @@ class ModelTrainer:
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         return checkpoint['epoch']
     
-    def train_epoch(self, train_loader):
+    def train_epoch(self, train_loader: DataLoader) -> Tuple[float, float, torch.Tensor]:
         self.model.train()
         running_loss = 0.0
         correct = 0
@@ -127,7 +130,7 @@ class ModelTrainer:
     
         return running_loss / len(train_loader), 100. * correct / total, confusion_matrix
     
-    def validate(self, val_loader):
+    def validate(self, val_loader: DataLoader) -> Tuple[float, float, torch.Tensor]:
         self.model.eval()
         running_loss = 0.0
         correct = 0
@@ -159,7 +162,7 @@ class ModelTrainer:
 
         return running_loss / len(val_loader), 100. * correct / total, confusion_matrix
 
-    def get_uncertain_samples(self, dataloader, n_samples=10):
+    def get_uncertain_samples(self, dataloader: DataLoader, n_samples: int=10) -> List[Tuple[int, float, int]]:
         """Identify the most uncertain predictions"""
         self.model.eval()
         uncertainties = []
@@ -197,7 +200,7 @@ class ModelTrainer:
         return uncertainties[:n_samples]
 
 
-def create_sampler(dataset):
+def create_sampler(dataset: LWATVDataset) -> WeightedRandomSampler:
     """Create a weighted sampler to handle class imbalance"""
     targets = [label for _, _, label in dataset]
     class_counts = Counter(targets)
@@ -206,7 +209,7 @@ def create_sampler(dataset):
     return sampler
 
 
-def create_balanced_sampler(dataset):
+def create_balanced_sampler(dataset: LWATVDataset) -> WeightedRandomSampler:
     """
     Create a weighted sampler that ensures:
     1. 50/50 split between 'good' and all other classes combined
@@ -263,8 +266,9 @@ def create_balanced_sampler(dataset):
     return sampler
 
 
-def train_model(model, model_trainer, train_dataset, val_dataset, batch_size=32,
-                num_epochs=10, patience=5, checkpoint_dir='checkpoints'):
+def train_model(model: Type[nn.Module], model_trainer: Type[ModelTrainer],
+                train_dataset: LWATVDataset, val_dataset: LWATVDataset, batch_size: int=32,
+                num_epochs: int=10, patience: int=5, checkpoint_dir: str='checkpoints') -> nn.Module:
     """
     Train model with early stopping and checkpointing
     
@@ -324,28 +328,18 @@ def train_model(model, model_trainer, train_dataset, val_dataset, batch_size=32,
 
 
 class EnsembleTrainer:
-    def __init__(
-        self,
-        model_class: Type[nn.Module],
-        n_models: int = 5,
-        device: str = 'cuda' if torch.cuda.is_available() else 'cpu'
-    ):
+    def __init__(self, model_class: Type[nn.Module], n_models: int = 5,
+        device: str='cuda' if torch.cuda.is_available() else 'cpu'):
         self.model_class = model_class
         self.n_models = n_models
         self.device = device
         self.models: List[nn.Module] = []
         self.trainers: List[ModelTrainer] = []
         
-    def train_with_bagging(
-        self,
-        train_dataset: LWATVDataset,
-        val_dataset: LWATVDataset,
-        batch_size: int = 32,
-        num_epochs: int = 10,
-        sample_fraction: float = 0.8,
-        checkpoint_dir: str = 'ensemble_checkpoints',
-        patience: int = 5
-    ):
+    def train_with_bagging(self, train_dataset: LWATVDataset, val_dataset: LWATVDataset,
+                                 batch_size: int=32, num_epochs: int=10,
+                                 sample_fraction: float = 0.8, checkpoint_dir: str = 'ensemble_checkpoints',
+                                patience: int = 5):
         """Train ensemble using bagging (bootstrap aggregating)"""
         os.makedirs(checkpoint_dir, exist_ok=True)
         
@@ -414,15 +408,10 @@ class EnsembleTrainer:
             self.models.append(model)
             self.trainers.append(trainer)
     
-    def train_with_kfold(
-        self,
-        train_dataset: LWATVDataset,
-        val_dataset: Optional[LWATVDataset] = None,
-        batch_size: int = 32,
-        num_epochs: int = 10,
-        checkpoint_dir: str = 'ensemble_checkpoints',
-        patience: int = 5
-    ):
+    def train_with_kfold(self, train_dataset: LWATVDataset, val_dataset: Optional[LWATVDataset]=None,
+                               batch_size: int=32, num_epochs: int=10,
+                               checkpoint_dir: str='ensemble_checkpoints',
+                               patience: int=5):
         """Train ensemble using k-fold cross validation"""
         os.makedirs(checkpoint_dir, exist_ok=True)
         
@@ -502,7 +491,7 @@ class EnsembleTrainer:
             self.models.append(model)
             self.trainers.append(trainer)
     
-    def predict(self, dataset: LWATVDataset) -> tuple:
+    def predict(self, dataset: LWATVDataset) -> Tuple[int, float]:
         """Get ensemble prediction through majority voting"""
         predictions = []
         confidences = []
@@ -530,7 +519,7 @@ class EnsembleTrainer:
         
         return final_pred, final_conf
     
-    def load_ensemble(self, checkpoint_dir: str, epoch: Optional[int] = None):
+    def load_ensemble(self, checkpoint_dir: str, epoch: Optional[int]=None):
         """Load a previously trained ensemble from checkpoints
         
         Args:
@@ -594,7 +583,7 @@ class EnsembleTrainer:
                           f"Best epoch: {model_meta['best_epoch']}")
 
 
-def analyze_checkpoint(checkpoint_path, val_dataset=None):
+def analyze_checkpoint(checkpoint_path: str, val_dataset: Optional[LWATVDataset]=None) -> Dict[str, Any]:
     """
     Analyze a model checkpoint file to extract training metrics and optionally compute current metrics
     
@@ -659,7 +648,7 @@ def analyze_checkpoint(checkpoint_path, val_dataset=None):
     
     return metrics
 
-def print_checkpoint_analysis(checkpoint_path, val_dataset=None):
+def print_checkpoint_analysis(checkpoint_path: str, val_dataset: Optional[LWATVDataset]=None):
     """Pretty print the checkpoint analysis results"""
     metrics = analyze_checkpoint(checkpoint_path, val_dataset)
     
