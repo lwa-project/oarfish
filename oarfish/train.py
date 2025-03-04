@@ -3,7 +3,7 @@ import logging
 import numpy as np
 from collections import Counter
 
-from typing import List, Tuple, Optional, Type
+from typing import List, Tuple, Optional, Type, Dict, Any
 
 import torch
 import torch.nn as nn
@@ -20,7 +20,7 @@ from .classify import BinaryLWATVClassifier, MultiLWATVClassifier
 logger = logging.getLogger(__name__)
 
 class ModelTrainer:
-    def __init__(self, model: nn.Model, num_epochs: int=10, num_steps: int=10,
+    def __init__(self, model: nn.Module, num_epochs: int=10, num_steps: int=10,
                        device: str='cuda' if torch.cuda.is_available() else 'cpu',
                        tag: Optional[str]=None):
         self.model = model.to(device)

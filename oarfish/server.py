@@ -4,7 +4,7 @@ import queue
 import numpy as np
 from logging import Logger
 from functools import lru_cache
-from typing import Optional, Any, Tuple
+from typing import Optional, Any, Tuple, Union
 
 from torch.utils.data import DataLoader
 

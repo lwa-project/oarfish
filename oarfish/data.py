@@ -257,7 +257,7 @@ class MultiChannelDataset(LWATVDataset):
         self._cache = {}
         
     @staticmethod
-    def _process_image_stack(metadata: Dict[str, Any], stokes_i: np.ndarray, stokes_v: np.ndarrat,
+    def _process_image_stack(metadata: Dict[str, Any], stokes_i: np.ndarray, stokes_v: np.ndarray,
                              location: Optional[EarthLocation]=None,
                              transform: Optional[Any]=None) -> List[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
         if len(stokes_i.shape) == 2:
