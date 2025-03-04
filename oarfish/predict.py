@@ -213,13 +213,13 @@ class DualModelPredictor:
                 binary_outputs = self.binary_model(img_tensors, hrz_tensors, astro_tensors)
                 binary_probs = torch.softmax(binary_outputs, dim=1)
                 binary_preds = binary_outputs.argmax(dim=1)
-                binary_confs = torch.gather(binary_probs, 1, binary_preds.unsqueeze(1)).squeeze()
+                binary_confs = torch.gather(binary_probs, 1, binary_preds.unsqueeze(1))
                 
                 # Get multi-class model predictions
                 multi_outputs = self.multi_model(img_tensors, hrz_tensors, astro_tensors)
                 multi_probs = torch.softmax(multi_outputs, dim=1)
                 multi_preds = multi_outputs.argmax(dim=1)
-                multi_confs = torch.gather(multi_probs, 1, multi_preds.unsqueeze(1)).squeeze()
+                multi_confs = torch.gather(multi_probs, 1, multi_preds.unsqueeze(1))
                 
                 # Process each item in the batch
                 for i in range(len(binary_preds)):
