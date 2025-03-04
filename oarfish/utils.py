@@ -298,7 +298,7 @@ def characterize_beyond_horizon(byd_i: np.ndarray, byd_v: np.ndarray) -> Union[D
 def extract_sources(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time, wcs: WCS,
                     location: Optional[EarthLocation]=None,
                     srcs: List[str]=['CygA', 'CasA', 'TauA', 'VirA']) -> Union[Dict[str, List[np.ndarray]],
-                                                                               List[Dict[str, np.ndarray]]]::
+                                                                               List[Dict[str, np.ndarray]]]:
     """
     Return a set of postage stamps (both Stokes I and |V|) for the list of
     provided sources.
@@ -344,7 +344,7 @@ def extract_sources(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time,
 
 def extract_sun(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time, wcs: WCS,
                 location: Optional[EarthLocation]=None) -> Union[Dict[str, List[np.ndarray]],
-                                                                 List[Dict[str, np.ndarray]]]::
+                                                                 List[Dict[str, np.ndarray]]]:
     """
     Similar to extract_sources but only works on the Sun.
     """
