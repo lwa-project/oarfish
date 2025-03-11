@@ -4,6 +4,8 @@ import sys
 import os
 from pathlib import Path
 
+from .git_version import *
+
 def _get_code_checksum() -> str:
     """Create a checksum of all relevant module files"""
     modules = ['data', 'utils', 'train', 'classify', 'predict']
@@ -18,3 +20,4 @@ def _get_code_checksum() -> str:
     return ",".join(checksums)
 
 CODE_CHECKSUM = _get_code_checksum()
+REPO_INFO = f"{GIT_BRANCH}@{GIT_HASH[:7]}-{GIT_STATUS}"

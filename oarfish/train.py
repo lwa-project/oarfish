@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader, WeightedRandomSampler
 
 from sklearn.model_selection import KFold
 
-from . import CODE_CHECKSUM
+from . import CODE_CHECKSUM, REPO_INFO
 from .data import LWATVDataset
 from .classify import BinaryLWATVClassifier, MultiLWATVClassifier
 
@@ -65,6 +65,7 @@ class ModelTrainer:
         os.makedirs(path, exist_ok=True)
         checkpoint = {
             'code_checksum': CODE_CHECKSUM,
+            'repo_info': REPO_INFO,
             'epoch': epoch,
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
@@ -87,6 +88,11 @@ class ModelTrainer:
                 print("Warning: checksum mis-match between software and checkpoint data")
         else:
             print("Warning: no checksum found in the checkpoint data")
+        if 'repo_info' in checkpoint:
+            if checkpoint['repo_info'] != REPO_INFO:
+                print("Warning: git repo info mis-match between software and checkpoint data")
+        else:
+            print("Warning: no git repo info found in the checkpoint data")
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         return checkpoint['epoch']

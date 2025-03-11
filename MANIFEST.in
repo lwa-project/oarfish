@@ -1,5 +1,6 @@
 include README.md
 include LICENSE
 recursive-include oarfish *
+include oarfish/git_version.py
 recursive-include scripts *
 global-exclude *~ *.bak *.py[cod] __pycache__
