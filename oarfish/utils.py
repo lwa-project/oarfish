@@ -440,16 +440,21 @@ def characterize_sources(regions: Union[Dict[str, float], List[Dict[str, float]]
         c_results = {}
         for src,(stokes_i,stokes_v) in c_region.items():
             tot = stokes_i.sum() + 1e-8
-            xp = stokes_i.sum(axis=0)
-            yp = stokes_i.sum(axis=1)
-            i = np.arange(xp.size)
-            j = np.arange(yp.size)
+            j, i = np.indices(stokes_i.shape)
             
-            cx = (xp*i).sum() / tot
-            cy = (yp*j).sum() / tot
+            cx = (stokes_i*i).sum() / tot
+            cy = (stokes_i*j).sum() / tot
             
-            wx = np.sqrt((xp*(i-cx)**2).sum() / tot)
-            wy = np.sqrt((yp*(j-cy)**2).sum() / tot)
+            wx2 = ((i - cx)**2 * stokes_i).sum() / tot
+            wy2 = ((j - cy)**2 * stokes_i).sum() / tot
+            wxy = ((i - cx)*(j - cy) * stokes_i).sum() / tot
+            
+            cov = np.array([[wx2, wxy], [wxy, wy2]])
+            evals, evecs = np.linalg.eigh(cov)
+            order = np.argsort(evals)[::-1]
+            wx = np.sqrt(evals[0])
+            wy = np.sqrt(evals[1])
+            th = np.arctan(evecs[1,0]/evecs[0,0]) % np.pi
             
             bk = np.median(stokes_i)
             pk = stokes_i.max()
@@ -461,8 +466,9 @@ def characterize_sources(regions: Union[Dict[str, float], List[Dict[str, float]]
                               'background': bk,
                               'center_x': cx,
                               'center_y': cy,
-                              'width_x': wx,
-                              'width_y': wy,
+                              'width_maj': wx,
+                              'width_min': wy,
+                              'pos_ang': np.rad2deg(th),
                               'v_over_i': pf
                              }
             
@@ -470,27 +476,32 @@ def characterize_sources(regions: Union[Dict[str, float], List[Dict[str, float]]
         peak_flux = 0.0
         mean_contrast = 0.0
         mean_width_ratio = 0.0
+        mean_pa = 0.0
         mean_v_over_i = 0.0
         for src,res in c_results.items():
             peak_flux = max(peak_flux, res['flux'])
             mean_contrast += np.clip(res['background'] / (res['flux'] + 1e-8), 0, 1)
-            mean_width_ratio += np.clip(min(res['width_x'], res['width_y']) / (max(res['width_x'], res['width_y']) + 1e-8), 0, 1)
+            mean_width_ratio += np.clip(min(res['width_maj'], res['width_min']) / (max(res['width_maj'], res['width_min']) + 1e-8), 0, 1)
+            mean_pa += res['pos_ang']
             mean_v_over_i += np.clip(res['v_over_i'], 0, 1)
             nsrc += 1
             
         if nsrc > 0:
             mean_contrast /= nsrc
             mean_width_ratio /= nsrc
+            mean_pa /= nsrc
             mean_v_over_i /= nsrc
         else:
             mean_contrast = 1.0
             mean_width_ratio = 1.0
+            mean_pa = 0.0
             mean_v_over_i = 0.0
             
         results.append({'nsource': nsrc,
                         'peak_flux': peak_flux,
                         'mean_contrast': mean_contrast,
                         'mean_width_ratio': mean_width_ratio,
+                        'mean_pos_ang': mean_pa,
                         'mean_v_over_i': mean_v_over_i
                        })
         
