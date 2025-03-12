@@ -64,7 +64,9 @@ if __name__ == "__main__":
                       help='Number of epochs to train')
     parser.add_argument('--patience', type=int, default=5,
                       help='Early stopping patience')
-    parser.add_argument('--checkpoint_dir', type=str, default='checkpoints',
+    parser.add_argument('--dataset-dir', type=str, default='.',
+                        help='Directory containing the binary and multi-class training/validation data')
+    parser.add_argument('--checkpoint-dir', type=str, default='checkpoints',
                       help='Directory to save model checkpoints')
     parser.add_argument('--log_dir', type=str, default='logs',
                       help='Directory to save training logs')
@@ -92,8 +94,8 @@ if __name__ == "__main__":
             logger.info(f"BINARY - {arg}: {getattr(args, arg)}")
         
         # Get training and validation data
-        train_paths, train_labels, train_counts = get_data_from_dir('binary/train', m)
-        val_paths, val_labels, val_counts = get_data_from_dir('binary/val', m)
+        train_paths, train_labels, train_counts = get_data_from_dir(f"{args.dataset_dir}/binary/train", m)
+        val_paths, val_labels, val_counts = get_data_from_dir(f"{args.dataset_dir}binary/val", m)
         
         if not train_paths or not val_paths:
             logger.error("BINARY - No images found in one or both directories")
@@ -146,8 +148,8 @@ if __name__ == "__main__":
         logger.info(f"MULTI - {arg}: {getattr(args, arg)}")
     
     # Get training and validation data
-    train_paths, train_labels, train_counts = get_data_from_dir('multi/train', m)
-    val_paths, val_labels, val_counts = get_data_from_dir('multi/val', m)
+    train_paths, train_labels, train_counts = get_data_from_dir(f"{args.dataset_dir}/multi/train", m)
+    val_paths, val_labels, val_counts = get_data_from_dir(f"{args.dataset_dir}/multi/val", m)
     
     if not train_paths or not val_paths:
         logger.error("MULTI - No images found in one or both directories")
