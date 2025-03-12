@@ -606,6 +606,8 @@ def analyze_checkpoint(checkpoint_path: str, val_dataset: Optional[LWATVDataset]
     # Extract saved metrics
     metrics = {
         'epoch': checkpoint.get('epoch'),
+        'code_checksum': checkpoint.get('code_checksum', None),
+        'repo_info': checkpoint.get('repo_info', None),
         'saved_val_acc': checkpoint.get('val_acc'),
         'saved_val_loss': checkpoint.get('val_loss'),
         'saved_val_cmatrix': checkpoint.get('val_cmatrix')
@@ -661,6 +663,14 @@ def print_checkpoint_analysis(checkpoint_path: str, val_dataset: Optional[LWATVD
     print(f"\nCheckpoint Analysis for: {checkpoint_path}")
     print(f"Model Type: {metrics['model_type']}")
     print(f"Saved at epoch: {metrics['epoch']}")
+    
+    if metrics['code_checksum'] is not None:
+        print("Training Code Checksums:")
+        for entry in metrics['code_checksum'].split(','):
+            print(f"  {entry}")
+            
+    if metrics['repo_info'] is not None:
+        print(f"Training Code Repository: {metrics['repo_info']}")
     
     if metrics['saved_val_acc'] is not None:
         print(f"\nSaved Metrics:")
