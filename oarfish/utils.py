@@ -469,7 +469,7 @@ def characterize_sources(regions: Union[Dict[str, float], List[Dict[str, float]]
             order = np.argsort(evals)[::-1]
             wx = np.sqrt(evals[0])
             wy = np.sqrt(evals[1])
-            th = np.arctan(evecs[1,0]/evecs[0,0]) % np.pi
+            th = np.arctan2(evecs[1,0], evecs[0,0]) % np.pi
             
             bk = np.median(stokes_i)
             pk = stokes_i.max()
