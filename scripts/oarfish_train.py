@@ -57,7 +57,10 @@ def analyze_class_balance(train_counts, val_counts, model):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Train LWATV Image Classifier')
+    parser = argparse.ArgumentParser(
+        description='Train LWATV Image Classifier',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        )
     parser.add_argument('--batch_size', type=int, default=32,
                       help='Batch size for training')
     parser.add_argument('--epochs', type=int, default=30,
@@ -68,7 +71,7 @@ if __name__ == "__main__":
                         help='Directory containing the binary and multi-class training/validation data')
     parser.add_argument('--checkpoint-dir', type=str, default='checkpoints',
                       help='Directory to save model checkpoints')
-    parser.add_argument('--log_dir', type=str, default='logs',
+    parser.add_argument('--log-dir', type=str, default='logs',
                       help='Directory to save training logs')
     args = parser.parse_args()
     
