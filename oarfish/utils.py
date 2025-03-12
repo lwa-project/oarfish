@@ -296,7 +296,7 @@ def characterize_beyond_horizon(byd_i: np.ndarray, byd_v: np.ndarray) -> Union[D
 
 
 def extract_sources(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time, wcs: WCS,
-                    location: Optional[EarthLocation]=None,
+                    location: Optional[EarthLocation]=None, window_size: int=15,
                     srcs: List[str]=['CygA', 'CasA', 'TauA', 'VirA']) -> Union[Dict[str, List[np.ndarray]],
                                                                                List[Dict[str, np.ndarray]]]:
     """
@@ -310,6 +310,10 @@ def extract_sources(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time,
         stokes_i = stokes_i.reshape(1, *stokes_i.shape)
         stokes_v = stokes_v.reshape(1, *stokes_v.shape)
     nchan, xsize, ysize = stokes_i.shape
+    
+    if window_size % 2 == 0:
+        window_size += 1
+    wpad = window_size //2
     
     pc = wcs.pixel_to_world(*(wcs.wcs.crpix-1))
     srcs_xy = {}
@@ -332,8 +336,8 @@ def extract_sources(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time,
     for c in range(nchan):
         regions = {}
         for src,(y,x) in srcs_xy.items():
-            regions[src] = [stokes_i[c, x-7:x+8, y-7:y+8],
-                            stokes_v[c, x-7:x+8, y-7:y+8]]
+            regions[src] = [stokes_i[c, x-wpad:x+wpad+1, y-wpad:y+wpad+1],
+                            stokes_v[c, x-wpad:x+wpad+1, y-wpad:y+wpad+1]]
         results.append(regions)
         
     if reshape_needed:
@@ -343,8 +347,9 @@ def extract_sources(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time,
 
 
 def extract_sun(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time, wcs: WCS,
-                location: Optional[EarthLocation]=None) -> Union[Dict[str, List[np.ndarray]],
-                                                                 List[Dict[str, np.ndarray]]]:
+                location: Optional[EarthLocation]=None,
+                window_size: int=15) -> Union[Dict[str, List[np.ndarray]],
+                                              List[Dict[str, np.ndarray]]]:
     """
     Similar to extract_sources but only works on the Sun.
     """
@@ -355,6 +360,10 @@ def extract_sun(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time, wcs
         stokes_i = stokes_i.reshape(1, *stokes_i.shape)
         stokes_v = stokes_v.reshape(1, *stokes_v.shape)
     nchan, xsize, ysize = stokes_i.shape
+    
+    if window_size % 2 == 0:
+        window_size += 1
+    wpad = window_size //2
     
     pc = wcs.pixel_to_world(*(wcs.wcs.crpix-1))
         
@@ -368,8 +377,8 @@ def extract_sun(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time, wcs
         regions = {}
         if d.deg <= HORIZON_ZA_DEG:
             y, x = int(round(sun_y.item())), int(round(sun_x.item()))
-            regions['sun'] = [stokes_i[c, x-7:x+8, y-7:y+8],
-                              stokes_v[c, x-7:x+8, y-7:y+8]]
+            regions['sun'] = [stokes_i[c, x-wpad:x+wpad+1, y-wpad:y+wpad+1],
+                              stokes_v[c, x-wpad:x+wpad+1, y-wpad:y+wpad+1]]
             if regions['sun'][0].size == 0:
                 del regions['sun']
         results.append(regions)
@@ -381,8 +390,9 @@ def extract_sun(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time, wcs
 
 
 def extract_jupiter(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time, wcs: WCS,
-                    location: Optional[EarthLocation]=None) -> Union[Dict[str, List[np.ndarray]],
-                                                                     List[Dict[str, np.ndarray]]]:
+                    location: Optional[EarthLocation]=None,
+                    window_size: int=15) -> Union[Dict[str, List[np.ndarray]],
+                                                  List[Dict[str, np.ndarray]]]:
     """
     Similar to extract_sources but only works on Jupiter.
     """
@@ -393,6 +403,10 @@ def extract_jupiter(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time,
         stokes_i = stokes_i.reshape(1, *stokes_i.shape)
         stokes_v = stokes_v.reshape(1, *stokes_v.shape)
     nchan, xsize, ysize = stokes_i.shape
+    
+    if window_size % 2 == 0:
+        window_size += 1
+    wpad = window_size //2
     
     pc = wcs.pixel_to_world(*(wcs.wcs.crpix-1))
     
@@ -406,8 +420,8 @@ def extract_jupiter(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time,
         regions = {}
         if d.deg <= HORIZON_ZA_DEG: 
             y, x = int(round(jupiter_y.item())), int(round(jupiter_x.item()))
-            regions['jupiter'] = [stokes_i[c, x-7:x+8, y-7:y+8],
-                                  stokes_v[c, x-7:x+8, y-7:y+8]]
+            regions['jupiter'] = [stokes_i[c, x-wpad:x+wpad+1, y-wpad:y+wpad+1],
+                                  stokes_v[c, x-wpad:x+wpad+1, y-wpad:y+wpad+1]]
             if regions['jupiter'][0].size == 0:
                 del regions['jupiter']
         results.append(regions)
@@ -426,7 +440,8 @@ def characterize_sources(regions: Union[Dict[str, float], List[Dict[str, float]]
      * Number of sources analyzed
      * The peak background subtracted flux measured
      * Average ratio of the background to the peak flux
-     * Average ratio of the X to Y FWHM estimates
+     * Average ratio of the minor to major axes FWHM estimates
+     * Average value of the position angle of the major axis
      * Average ratio of Stokes |V| to I at the Stokes I peak location
     """
     
@@ -440,16 +455,21 @@ def characterize_sources(regions: Union[Dict[str, float], List[Dict[str, float]]
         c_results = {}
         for src,(stokes_i,stokes_v) in c_region.items():
             tot = stokes_i.sum() + 1e-8
-            xp = stokes_i.sum(axis=0)
-            yp = stokes_i.sum(axis=1)
-            i = np.arange(xp.size)
-            j = np.arange(yp.size)
+            j, i = np.indices(stokes_i.shape)
             
-            cx = (xp*i).sum() / tot
-            cy = (yp*j).sum() / tot
+            cx = (stokes_i*i).sum() / tot
+            cy = (stokes_i*j).sum() / tot
             
-            wx = np.sqrt((xp*(i-cx)**2).sum() / tot)
-            wy = np.sqrt((yp*(j-cy)**2).sum() / tot)
+            wx2 = ((i - cx)**2 * stokes_i).sum() / tot
+            wy2 = ((j - cy)**2 * stokes_i).sum() / tot
+            wxy = ((i - cx)*(j - cy) * stokes_i).sum() / tot
+            
+            cov = np.array([[wx2, wxy], [wxy, wy2]])
+            evals, evecs = np.linalg.eigh(cov)
+            order = np.argsort(evals)[::-1]
+            wx = np.sqrt(evals[0])
+            wy = np.sqrt(evals[1])
+            th = np.arctan(evecs[1,0]/evecs[0,0]) % np.pi
             
             bk = np.median(stokes_i)
             pk = stokes_i.max()
@@ -461,8 +481,9 @@ def characterize_sources(regions: Union[Dict[str, float], List[Dict[str, float]]
                               'background': bk,
                               'center_x': cx,
                               'center_y': cy,
-                              'width_x': wx,
-                              'width_y': wy,
+                              'width_maj': wx,
+                              'width_min': wy,
+                              'pos_ang': np.rad2deg(th),
                               'v_over_i': pf
                              }
             
@@ -470,27 +491,32 @@ def characterize_sources(regions: Union[Dict[str, float], List[Dict[str, float]]
         peak_flux = 0.0
         mean_contrast = 0.0
         mean_width_ratio = 0.0
+        mean_pa = 0.0
         mean_v_over_i = 0.0
         for src,res in c_results.items():
             peak_flux = max(peak_flux, res['flux'])
             mean_contrast += np.clip(res['background'] / (res['flux'] + 1e-8), 0, 1)
-            mean_width_ratio += np.clip(min(res['width_x'], res['width_y']) / (max(res['width_x'], res['width_y']) + 1e-8), 0, 1)
+            mean_width_ratio += np.clip(min(res['width_maj'], res['width_min']) / (max(res['width_maj'], res['width_min']) + 1e-8), 0, 1)
+            mean_pa += res['pos_ang']
             mean_v_over_i += np.clip(res['v_over_i'], 0, 1)
             nsrc += 1
             
         if nsrc > 0:
             mean_contrast /= nsrc
             mean_width_ratio /= nsrc
+            mean_pa /= nsrc
             mean_v_over_i /= nsrc
         else:
             mean_contrast = 1.0
             mean_width_ratio = 1.0
+            mean_pa = 0.0
             mean_v_over_i = 0.0
             
         results.append({'nsource': nsrc,
                         'peak_flux': peak_flux,
                         'mean_contrast': mean_contrast,
                         'mean_width_ratio': mean_width_ratio,
+                        'mean_pos_ang': mean_pa,
                         'mean_v_over_i': mean_v_over_i
                        })
         

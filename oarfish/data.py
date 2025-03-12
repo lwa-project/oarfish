@@ -135,11 +135,14 @@ class LWATVDataset(Dataset):
         sky_i, sky_v = extract_sky(stokes_i, stokes_v, topo_wcs) 
         hrz_i, hrz_v = extract_horizon(stokes_i, stokes_v, wcs)
         byd_i, byd_v = extract_beyond_horizon(stokes_i, stokes_v, topo_wcs)
-        srcs = extract_sources(stokes_i, stokes_v, timestamp, wcs, location=location)
-        sun = extract_sun(stokes_i, stokes_v, timestamp, wcs, location=location)
+        srcs = extract_sources(stokes_i, stokes_v, timestamp, wcs,
+                               location=location, window_size=15)
+        sun = extract_sun(stokes_i, stokes_v, timestamp, wcs,
+                          location=location, window_size=15)
         jupiter = {}
         if metadata['start_freq'] <= 40e6:
-            jupiter = extract_jupiter(stokes_i, stokes_v, timestamp, wcs, location=location)
+            jupiter = extract_jupiter(stokes_i, stokes_v, timestamp, wcs,
+                                      location=location, window_size=15)
         
         # Analyze astronoical features
         sky = characterize_sky(sky_i, sky_v)
@@ -295,9 +298,12 @@ class MultiChannelDataset(LWATVDataset):
         sky_i, sky_v = extract_sky(stokes_i, stokes_v, topo_wcs) 
         hrz_i, hrz_v = extract_horizon(stokes_i, stokes_v, wcs)
         byd_i, byd_v = extract_beyond_horizon(stokes_i, stokes_v, topo_wcs)
-        srcs = extract_sources(stokes_i, stokes_v, timestamp, wcs, location=location)
-        sun = extract_sun(stokes_i, stokes_v, timestamp, wcs, location=location)
-        jupiter = extract_jupiter(stokes_i, stokes_v, timestamp, wcs, location=location)
+        srcs = extract_sources(stokes_i, stokes_v, timestamp, wcs,
+                               location=location, window_size=15)
+        sun = extract_sun(stokes_i, stokes_v, timestamp, wcs,
+                          location=location, window_size=15)
+        jupiter = extract_jupiter(stokes_i, stokes_v, timestamp, wcs,
+                                  location=location, window_size=15)
         for c in range(nchan):
             f = metadata['start_freq'] + c*metadata['bandwidth']
             if f > 40e6:
