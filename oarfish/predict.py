@@ -208,8 +208,12 @@ class DualModelPredictor:
                 if self._batches_processed % 10 == 0:
                     self.empty_cache()
                     
-                img_tensors, hrz_tensors, astro_tensors, info_batch = batch_data
-                
+                try:
+                    img_tensors, hrz_tensors, astro_tensors, info_batch = batch_data
+                except ValueError:
+                    img_tensors, hrz_tensors, astro_tensors = batch_data
+                    info_batch = {}
+                    
                 # Move to device
                 img_tensors = img_tensors.to(self.device)
                 hrz_tensors = hrz_tensors.to(self.device)
