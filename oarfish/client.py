@@ -60,10 +60,10 @@ class PredictionClient:
         self.sock.setsockopt(zmq.RECONNECT_IVL, 100)
         self.sock.setsockopt(zmq.RECONNECT_IVL_MAX, 10000)
         
-        self.sock.connect(f"tcp://{self.address}:{self.port}")
-        
         self._reset_stats()
         self.request_stats['start_time'] = time.time()
+        
+        self.sock.connect(f"tcp://{self.address}:{self.port}")
         
         if self.logger:
             self.logger.info(f"Client ID is {self.client_id}")
