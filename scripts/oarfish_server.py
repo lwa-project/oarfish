@@ -1,4 +1,5 @@
 import sys
+import time
 import logging
 import argparse
 
@@ -50,9 +51,16 @@ if __name__ == '__main__':
                               predictor=predictor, logger=logger)
     server.start()
     
+    t_last_report = time.time()
     while True:
         try:
             server.receive()
+            
+            t_now = time.time()
+            if t_now - t_last_report > 600:
+                t_last_report = t_now
+                logger.info("Connection statistics: %s", str(server.get_stats()))
+                
         except KeyboardInterrupt:
             break
             

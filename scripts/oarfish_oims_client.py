@@ -80,4 +80,6 @@ if __name__ == '__main__':
                 t1 = time.time()
                 logger.info("Average speed is %.1f ints/s (%.3f s per request)", i/(t1-t0), (t1-t0)/i)
                 
+    print(f"Connection Statistics: {str(client.get_stats())}")
+    
     client.end()
