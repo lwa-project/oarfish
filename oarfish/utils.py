@@ -464,7 +464,7 @@ def characterize_sources(regions: Union[Dict[str, float], List[Dict[str, float]]
             wy2 = ((j - cy)**2 * stokes_i).sum() / tot
             wxy = ((i - cx)*(j - cy) * stokes_i).sum() / tot
             
-            cov = np.array([[wx2, wxy], [wxy, wy2]])
+            cov = np.array([[wx2, wxy], [wxy, wy2]]) + np.eye(2)*1e-8
             evals, evecs = np.linalg.eigh(cov)
             order = np.argsort(evals)[::-1]
             wx = np.sqrt(evals[0])
