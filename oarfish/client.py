@@ -4,6 +4,7 @@ import time
 import uuid
 import numpy as np
 from logging import Logger
+from collections import deque
 
 from typing import Optional, Any, Dict, List, Union
 
@@ -24,6 +25,27 @@ class PredictionClient:
         self.ctx = None
         self.sock = None
         
+        self.request_stats = {'start_time': -1.0,
+                              'total': 0,
+                              'send_failed': 0,
+                              'error': 0,
+                              'success': 0,
+                              'timeout': 0,
+                              'last_success': -1.0,
+                              'response_times': deque([], maxlen=100)
+                             }
+        
+    def _reset_stats(self):
+        """
+        Reset the connection statistics to a clean state.
+        """
+        
+        for key in ('start_time', 'last_success'):
+            self.request_stats[key] = -1.0
+        for key in ('total', 'send_failed', 'error', 'success', 'timeout'):
+            self.request_stats[key] = 0
+        self.request_stats['response_times'].clear()
+        
     def start(self):
         """
         Connect to the prediction server.
@@ -39,6 +61,9 @@ class PredictionClient:
         self.sock.setsockopt(zmq.RECONNECT_IVL_MAX, 10000)
         
         self.sock.connect(f"tcp://{self.address}:{self.port}")
+        
+        self._reset_stats()
+        self.request_stats['start_time'] = time.time()
         
         if self.logger:
             self.logger.info(f"Client ID is {self.client_id}")
@@ -58,6 +83,41 @@ class PredictionClient:
         if self.logger:
             self.logger.info("Disconnected from prediction server")
             
+    def get_stats() -> Dict[str, Any]:
+        """
+        Get connection statistics about the client that include:
+         * how long it has been since start() was called
+         * how many requests have been processed
+         * when the last requests was successfully processed
+         * the average processing time of the last 50 requests
+        """
+        
+        uptime = 0.0
+        if self.request_stats['start_time'] > 0:
+            uptime = time.time() - self.request_stats['start_time']
+            
+        resp_time = 0.0
+        if self.request_stats['response_times']:
+            resp_time = sum(self.request_stats['response_times']) \
+                        / len(self.request_stats['response_times'])
+        
+        last_good = None
+        if self.request_stats['last_success'] > 0:
+            last_good = self.request_stats['last_success']
+            
+        return {'client_id': self.client_id,
+                'connected': self.ctx is not None,
+                'uptime': uptime,
+                'requests': {'total': self.request_stats['total'],
+                             'send_failed': self.request_stats['send_failed']
+                             'error': self.request_stats['error']
+                             'timeout': self.request_stats['timeout']
+                             'successful': self.request_stats['success']
+                            }
+                'last_successful_response': last_good,
+                'average_response_time': resp_time
+               }
+        
     def _send_and_recieve(self, parts: Optional[List[bytes]]=None) -> Optional[bytes]:
         """
         Backend function to send off a request and wait for a reply.
@@ -66,6 +126,9 @@ class PredictionClient:
         if self.sock is None:
             raise RuntimeError("Need to call start() before sending")
             
+        t_start = time.time()
+        self.request_stats['total'] += 1
+        
         request_id = str(uuid.uuid4()).encode()
         if parts is None:
             parts = []
@@ -79,6 +142,8 @@ class PredictionClient:
             try:
                 self.sock.send_multipart(parts)
             except zmq.error.Again as e:
+                self.request_stats['send_failed'] += 1
+                
                 if self.logger:
                     self.logger.warn(f"Failed to send to prediction server: {str(e)}")
                 return None
@@ -91,6 +156,12 @@ class PredictionClient:
                     if self.sock in events and events[self.sock] == zmq.POLLIN:
                         rrequest_id, results = self.sock.recv_multipart()
                         if rrequest_id == request_id:
+                            t_end = time.time()
+                            t_resp = t_end - t_start
+                            self.request_stats['last_success'] = t_end
+                            self.request_stats['response_times'].append(t_resp)
+                            self.request_stats['success'] += 1
+                            
                             return results
                             
                         else:
@@ -101,11 +172,15 @@ class PredictionClient:
                 except zmq.error.Again:
                     continue
                     
+            self.request_stats['timeout'] += 1
+            
             if self.logger:
                 self.logger.warn(f"Request {request_id} timed out after {self.timeout}s")
             return None
             
         except Exception as e:
+            self.request_stats['error'] += 1
+            
             print(f"Error on {request_id}: {str(e)}")
             return None
             
