@@ -1,3 +1,6 @@
+# Training and validation data sets
+training/
+
 # Auto generated files
 oarfish/git_version.py
 
