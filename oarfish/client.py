@@ -89,7 +89,7 @@ class PredictionClient:
          * how long it has been since start() was called
          * how many requests have been processed
          * when the last requests was successfully processed
-         * the average processing time of the last 50 requests
+         * the average processing time of the last 100 requests
         """
         
         uptime = 0.0
