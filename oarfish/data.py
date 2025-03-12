@@ -15,10 +15,9 @@ import astropy.units as u
 from .utils import *
 
 
-
 def info_to_wcs(info: Dict[str,Any], image_size: Optional[int]=None) -> Tuple[WCS, WCS]:
     """
-    Given a .oims metadata dictionary, construct RA/dec and altitude/azimuth
+    Given a .oims metadata dictionary, construct RA/dec and azimuth/altitude
     WCS instances and return them.
     """
     
@@ -30,8 +29,8 @@ def info_to_wcs(info: Dict[str,Any], image_size: Optional[int]=None) -> Tuple[WC
             
     pixel_scale = info['pixel_size']
     wcs = WCS(naxis=2)
-    wcs.wcs.crpix = [image_size/2 + 1 + 0.5 * ((image_size+1)%2),
-                     image_size/2 + 1 + 0.5 * ((image_size+1)%2)]
+    wcs.wcs.crpix = [(image_size + 1)/2.0,
+                     (image_size + 1)/2.0]
     wcs.wcs.cdelt = np.array([-pixel_scale,
                               pixel_scale])
     wcs.wcs.crval = [info['center_ra'],
@@ -39,19 +38,34 @@ def info_to_wcs(info: Dict[str,Any], image_size: Optional[int]=None) -> Tuple[WC
     wcs.wcs.ctype = ["RA---SIN",
                      "DEC--SIN"]
     
-    # Topocenteric WCS
+    # Topocenetric WCS
+    center_alt = center_az = 90.0
+    if 'center_alt' in info and 'center_az' in info:
+        center_alt = info['center_alt']
+        center_az = info['center_az']
+    
     topo_wcs =  WCS(naxis=2)
-    topo_wcs.wcs.crpix = [image_size/2 + 1 + 0.5 * ((image_size+1)%2),
-                          image_size/2 + 1 + 0.5 * ((image_size+1)%2)]
+    topo_wcs.wcs.crpix = [(image_size + 1)/2.0,
+                          (image_size + 1)/2.0]
     topo_wcs.wcs.cdelt = np.array([-pixel_scale,
                                    pixel_scale])
-    topo_wcs.wcs.crval = [info['center_az'],
-                          info['center_alt']]
-    topo_wcs.wcs.ctype = ["RA---SIN",
-                          "DEC--SIN"]
-    
+    topo_wcs.wcs.crval = [center_az,
+                          center_alt]
+    topo_wcs.wcs.ctype = ["RA---SIN",    # Really azimuth
+                          "DEC--SIN"]    # Really altitude
+
+    # Off-zenith phase center correction
+    if center_alt != 90.0:
+        zen_c = (90 - center_alt) * np.pi/180
+        zaz_c = (center_az + 180) * np.pi/180
+        
+        xi = np.sin(zen_c) * np.cos(zaz_c)
+        eta = np.sin(zen_c) * np.sin(zaz_c)
+        
+        wcs.wcs.set_pv([(2,1,xi), (2,2,eta)])
+        topo_wcs.wcs.set_pv([(2,1,xi), (2,2,eta)])
+        
     return wcs, topo_wcs
-    
 
 
 def load_lwatv_data(filename: str) -> Tuple[np.ndarray, np.ndarray, Dict[str,Any]]:
