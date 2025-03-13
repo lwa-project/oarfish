@@ -123,6 +123,13 @@ class LWATVDataset(Dataset):
         # Build up the WCS
         wcs, topo_wcs = info_to_wcs(metadata, image_size=stokes_i.shape[0])
         
+        # Try to pull out the correct station position
+        if 'station' in metadata:
+            try:
+                location = station_to_earthlocation(metadata['station'])
+            except ValueError:
+                pass
+                
         # Normalization
         vmin, vmax = 0, max([np.percentile(stokes_i.ravel(), 99.75), 1e-8])
         stokes_i = np.clip(stokes_i, vmin, vmax) / vmax
@@ -285,6 +292,13 @@ class MultiChannelDataset(LWATVDataset):
         # Build up the WCS
         wcs, topo_wcs = info_to_wcs(metadata, image_size=xsize)
         
+        # Try to pull out the correct station position
+        if 'station' in metadata:
+            try:
+                location = station_to_earthlocation(metadata['station'])
+            except ValueError:
+                pass
+                
         # Normalization
         for c in range(nchan):
             vmin, vmax = 0, max([np.percentile(stokes_i[c].ravel(), 99.75), 1e-8])
