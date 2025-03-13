@@ -6,6 +6,7 @@ from typing import Tuple, Union, List, Dict, Optional
 from astropy.coordinates import SkyCoord, get_body, EarthLocation
 from astropy.time import Time
 from astropy.wcs import WCS
+from astropy import units as u
 
 
 HORIZON_ALT_DEG = 30.0
@@ -24,6 +25,45 @@ EXT_SOURCES = {'HerA': SkyCoord('16h51m07.989s',  '4d59m35.55s', frame='icrs'),
                'HydA': SkyCoord( '9h18m05.668s', '-12d05m43.81s', frame='icrs'),
                'ForA': SkyCoord( '3h22m41.788s', '-37d12m29.52s', frame='icrs')
               }
+
+
+def station_to_earthlocation(station_id: Union[str, bytes]) -> EarthLocation:
+    """
+    Given a station name return an EarthLocation that corresponds to it.
+    """
+    
+    if isinstance(station_id, bytes):
+        station_id = station_id.decode()
+        
+    station_id = station_id.replace('-', '').lower()
+    if station_id == 'lwa1':
+        # LWA1 coordinates
+        station_location = EarthLocation.from_geodetic(
+            lon=-107.628350 * u.deg,
+            lat=34.068894 * u.deg,
+            height=2133.6 * u.m
+        )
+        
+    elif station_id == 'lwasv':
+        # LWA-SV coordinates
+        station_location = EarthLocation.from_geodetic(
+            lon=-106.885783*u.deg,
+            lat=34.348358*u.deg,
+            height=1477.8*u.m
+        )
+        
+    elif station_id == 'lwana':
+        # LWA-NA coordinates
+        station_location = EarthLocation.from_geodetic(
+            lon=-107.640 * u.deg,
+            lat=34.247 * u.deg,
+            height=2133.6 * u.m
+        )
+        
+    else:
+        raise ValueError(f"Unknown station '{station_id}'")
+        
+    return station_location
 
 
 @lru_cache(maxsize=32)
