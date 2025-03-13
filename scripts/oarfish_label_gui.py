@@ -35,9 +35,14 @@ except ImportError:
         pass
 
 
+class FocusAreaMismatch(RuntimeError):
+    pass
+
+
 class ImageClassifierApp:
     def __init__(self, root, data_dir: str, output_dir: str, colormap='viridis',
-                       is_multi_class: bool=True):
+                       is_multi_class: bool=True,
+                       focus_sun: bool=False, focus_jupiter: bool=False):
         self.root = root
         self.root.title("LWATV Image Classifier")
         
@@ -47,6 +52,10 @@ class ImageClassifierApp:
         
         # Colormap to use
         self.cmap = colormap
+        
+        # Focus areas
+        self.focus_sun = focus_sun
+        self.focus_jupiter = focus_jupiter
         
         # Define classification categories
         if is_multi_class:
@@ -277,93 +286,121 @@ class ImageClassifierApp:
         
     def load_random_image(self):
         """Load a random image from the database"""
-        db = None
         
-        try:
-            # Get all image paths
-            image_paths = self._load_image_paths(self.base_path)
-            
-            # Select random image
-            filename = random.choice(image_paths)
-            
-            # Open the database
-            db_path = filename
-            if filename.endswith('.oims'):
-                db = OrvilleImageDB(db_path, 'r')
-            else:
-                db = PasiImageDB(db_path, 'r')
+        attempt = 0
+        while True:
+            attempt += 1
+            if attempt % 100 == 0:
+                print(f"Still looking after {attempt} attempts...")
                 
-            # Get random image
-            nint = len(db)
-            image_index = random.randint(0, nint - 1)
-            
-            # Read the image
-            hdr_data = db[image_index]
-            info, data = hdr_data[0], hdr_data[1]
-            if len(data.shape) == 3:
-                ## Must be PASI data.  Fix it up
-                ### Header
-                info = info.as_dict()
-                tstart = Time(info['startTime'], format='mjd', scale='tai')
-                tcen = Time(info['centroidTime'], format='mjd', scale='tai')
-                info['start_time'] = float(tstart.utc.mjd)
-                info['centroid_time'] = float(tcen.utc.mjd)
-                info['int_len'] = info['intLen']
-                info['start_freq'] = info['freq']
-                info['stop_freq'] = info['freq']
-                info['pixel_size'] = db.header.xPixelSize
-                info['stokes_params'] = db.header.stokesParams
-                if isinstance(info['stokes_params'], bytes):
-                    info['stokes_params'] = info['stokes_params'].decode()
-                info['center_ra'] = info['zenithRA']
-                info['center_dec'] = info['zenithDec']
-                del info['worldreplace0']
-                
-                ### Data
-                data.shape = (1,)+data.shape
-                data = data.transpose(0,1,3,2)
-                
-            if isinstance(data, np.ma.MaskedArray):
-                data = data.data
+            db = None
             try:
-                info['station'] = db.header.station
-                if isinstance(info['station'], bytes):
-                    info['station'] = info['station'].decode()
-            except KeyError:
+                # Get all image paths
+                image_paths = self._load_image_paths(self.base_path)
+                
+                # Select random image
+                filename = random.choice(image_paths)
+                
+                # Open the database
+                db_path = filename
+                if filename.endswith('.oims'):
+                    db = OrvilleImageDB(db_path, 'r')
+                else:
+                    db = PasiImageDB(db_path, 'r')
+                    
+                # Get random image
+                nint = len(db)
+                image_index = random.randint(0, nint - 1)
+                
+                # Read the image
+                hdr_data = db[image_index]
+                info, data = hdr_data[0], hdr_data[1]
+                if len(data.shape) == 3:
+                    ## Must be PASI data.  Fix it up
+                    ### Header
+                    info = info.as_dict()
+                    tstart = Time(info['startTime'], format='mjd', scale='tai')
+                    tcen = Time(info['centroidTime'], format='mjd', scale='tai')
+                    info['start_time'] = float(tstart.utc.mjd)
+                    info['centroid_time'] = float(tcen.utc.mjd)
+                    info['int_len'] = info['intLen']
+                    info['start_freq'] = info['freq']
+                    info['stop_freq'] = info['freq']
+                    info['pixel_size'] = db.header.xPixelSize
+                    info['stokes_params'] = db.header.stokesParams
+                    if isinstance(info['stokes_params'], bytes):
+                        info['stokes_params'] = info['stokes_params'].decode()
+                    info['center_ra'] = info['zenithRA']
+                    info['center_dec'] = info['zenithDec']
+                    del info['worldreplace0']
+                    
+                    ### Data
+                    data.shape = (1,)+data.shape
+                    data = data.transpose(0,1,3,2)
+                    
+                if isinstance(data, np.ma.MaskedArray):
+                    data = data.data
+                try:
+                    info['station'] = db.header.station
+                    if isinstance(info['station'], bytes):
+                        info['station'] = info['station'].decode()
+                except KeyError:
+                    pass
+                wcs, _ = info_to_wcs(info, data.shape[-1])
+                
+                # Select a random channel
+                channel_index = random.randint(0, data.shape[0]-1)
+                
+                # Apply focus area cuts
+                if (self.focus_sun or self.focus_jupiter) and 'station' in info:
+                    timestamp = Time(info['start_time'], format='mjd', scale='utc')
+                    el = station_to_earthlocation(info['station'])
+                    if self.focus_sun:
+                        bdy = get_body('sun', timestamp)
+                        bdy = bdy.transform_to(AltAz(obstime=timestamp, location=el))
+                        if bdy.alt.deg < 30:
+                            raise FocusAreaMismatch(f"Sun is at {bdy.alt.deg} deg altitude")
+                        
+                    elif self.focus_jupiter:
+                        bdy = get_body('jupiter', timestamp)
+                        bdy = bdy.transform_to(AltAz(obstime=timestamp, location=el))
+                        if bdy.alt.deg < 30:
+                            raise FocusAreaMismatch(f"Jupiter is at {bdy.alt.deg} deg altitude")
+                        freq = info['start_freq'] + channel_index*info['bandwidth']
+                        if freq < 10e6 or freq > 40e6:
+                            raise FocusAreaMismatch(f"Frequency out of range for Jupiter at {freq/1e6} MHz")
+                            
+                # Store current image info
+                self.current_image_info = {
+                    'file': os.path.basename(filename),
+                    'index': image_index,
+                    'channel': channel_index,
+                    'data': data,
+                    'info': info,
+                    'wcs': wcs  # Store WCS information for celestial object marking
+                }
+                
+                self.display_image(data, channel=channel_index)
+                    
+                # Update info label
+                self.info_label.config(
+                    text=f"Source: {filename.replace(self.base_path+os.path.sep, '')} (Image {image_index}, Channel {channel_index})"
+                )
+                break
+                
+            except FocusAreaMismatch:
                 pass
-            wcs, _ = info_to_wcs(info, data.shape[-1])
-            
-            # Select a random channel
-            channel_index = random.randint(0, data.shape[0]-1)
-            
-            # Store current image info
-            self.current_image_info = {
-                'file': os.path.basename(filename),
-                'index': image_index,
-                'channel': channel_index,
-                'data': data,
-                'info': info,
-                'wcs': wcs  # Store WCS information for celestial object marking
-            }
-            
-            self.display_image(data, channel=channel_index)
                 
-            # Update info label
-            self.info_label.config(
-                text=f"Source: {filename.replace(self.base_path+os.path.sep, '')} (Image {image_index}, Channel {channel_index})"
-            )
-            
-        except Exception as e:
-            import traceback
-            logging.error(f"Error loading image: {str(e)}")
-            logging.error(f"Trackback: {traceback.format_exc()}")
-            self.info_label.config(text=f"Error loading image: {str(e)}")
-            self.load_random_image()
-            
-        finally:
-            if db is not None:
-                db.close()
+            except Exception as e:
+                import traceback
+                logging.error(f"Error loading image: {str(e)}")
+                logging.error(f"Trackback: {traceback.format_exc()}")
+                self.info_label.config(text=f"Error loading image: {str(e)}")
                 
+            finally:
+                if db is not None:
+                    db.close()
+                    
     def classify_image(self, category):
         """Save the classification and load next image"""
         if not self.current_image_info:
@@ -415,12 +452,21 @@ def main():
                         help='run in binary classification mode instead of multi-class mode')
     parser.add_argument('-c', '--colormap', type=str, default='viridis',
                         help='colormap to use for displaying the images')
+    fgroup = parser.add_mutually_exclusive_group(required=False)
+    fgroup.add_argument('--focus-sun', action='store_true',
+                        help='focus on data where the Sun is above the horizon')
+    fgroup.add_argument('--focus-jupiter', action='store_true',
+                        help='focus on low frequency (<40 MHz) data where Jupiter is above the horizon')
     args = parser.parse_args()
-    
+    if args.focus_sun or args.focus_jupiter:
+        print("WARNING:  Running in focused mode - expect delays while finding suitable images")
+        
     root = tk.Tk()
     app = ImageClassifierApp(root, args.data_dir, args.output_dir,
                              colormap=args.colormap,
-                             is_multi_class=not args.binary_only)
+                             is_multi_class=not args.binary_only,
+                             focus_sun=args.focus_sun,
+                             focus_jupiter=args.focus_jupiter)
     root.mainloop()
 
 
