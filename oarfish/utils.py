@@ -27,6 +27,7 @@ EXT_SOURCES = {'HerA': SkyCoord('16h51m07.989s',  '4d59m35.55s', frame='icrs'),
               }
 
 
+@lru_cache(maxsize=32)
 def station_to_earthlocation(station_id: Union[str, bytes]) -> EarthLocation:
     """
     Given a station name return an EarthLocation that corresponds to it.
