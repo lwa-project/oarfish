@@ -48,14 +48,7 @@ if __name__ == '__main__':
         station = station.lower()
             
         extra_info = {'station': station}
-        try:
-            el = station_to_earthlocation(station)
-            extra_info['lon'] = f"{el.lon.to('deg').value}d"
-            extra_info['lat'] = f"{el.lat.to('deg').value}d"
-            extra_info['height'] = f"{el.height.to('m').value}m"
-        except ValueError:
-            logger.warn(f"Unknown station '{station}', positions will be suspect")
-            
+        
         t0 = time.time()
         for i in range(db.nint):
             info, data = db.read_image()

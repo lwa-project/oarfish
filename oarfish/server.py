@@ -156,16 +156,9 @@ class PredictionServer:
         image_cube = image_cube.reshape(*metadata['image_cube_shape'])
         image_cube = image_cube.copy()
         
-        location = None
-        if 'lon' in metadata and 'lat' in metadata:
-            location = self._get_station_location(metadata['lon'],
-                                                  metadata['lat'],
-                                                  metadata['height'] if 'height' in metadata else 0.0)
-            
         dataset = MultiChannelDataset(metadata,
                                       image_cube[:,0,:,:],
-                                      image_cube[:,-1,:,:],
-                                      station_location=location)
+                                      image_cube[:,-1,:,:])
         
         results = self.predictor.predict_dataset(dataset)
         
