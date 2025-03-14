@@ -42,7 +42,8 @@ class FocusAreaMismatch(RuntimeError):
 class ImageClassifierApp:
     def __init__(self, root, data_dir: str, output_dir: str, colormap='viridis',
                        is_multi_class: bool=True,
-                       focus_sun: bool=False, focus_jupiter: bool=False):
+                       focus_sun: bool=False, focus_jupiter: bool=False,
+                       focus_night: bool=False):
         self.root = root
         self.root.title("LWATV Image Classifier")
         
@@ -56,6 +57,8 @@ class ImageClassifierApp:
         # Focus areas
         self.focus_sun = focus_sun
         self.focus_jupiter = focus_jupiter
+        self.focus_night = focus_night
+        self.is_focus = focus_sun or focus_jupiter or focus_night
         
         # Define classification categories
         if is_multi_class:
@@ -352,15 +355,17 @@ class ImageClassifierApp:
                 channel_index = random.randint(0, data.shape[0]-1)
                 
                 # Apply focus area cuts
-                if (self.focus_sun or self.focus_jupiter) and 'station' in info:
+                if self.is_focus and 'station' in info:
                     timestamp = Time(info['start_time'], format='mjd', scale='utc')
                     el = station_to_earthlocation(info['station'])
-                    if self.focus_sun:
+                    if self.focus_sun or self.focus_night:
                         bdy = get_body('sun', timestamp)
                         bdy = bdy.transform_to(AltAz(obstime=timestamp, location=el))
-                        if bdy.alt.deg < 30:
+                        if self.focus_sun and bdy.alt.deg < 30:
                             raise FocusAreaMismatch(f"Sun is at {bdy.alt.deg} deg altitude")
-                        
+                        elif self.focus_night and bdy.alt.deg > -1:
+                            raise FocusAreaMismatch(f"Sun is at {bdy.alt.deg} deg altitude")
+                            
                     elif self.focus_jupiter:
                         bdy = get_body('jupiter', timestamp)
                         bdy = bdy.transform_to(AltAz(obstime=timestamp, location=el))
@@ -457,8 +462,10 @@ def main():
                         help='focus on data where the Sun is above the horizon')
     fgroup.add_argument('--focus-jupiter', action='store_true',
                         help='focus on low frequency (<40 MHz) data where Jupiter is above the horizon')
+    fgroup.add_argument('--focus-night', action='store_true',
+                        help='focus on nightime data')
     args = parser.parse_args()
-    if args.focus_sun or args.focus_jupiter:
+    if args.focus_sun or args.focus_jupiter or args.focus_night:
         print("WARNING:  Running in focused mode - expect delays while finding suitable images")
         
     root = tk.Tk()
@@ -466,7 +473,8 @@ def main():
                              colormap=args.colormap,
                              is_multi_class=not args.binary_only,
                              focus_sun=args.focus_sun,
-                             focus_jupiter=args.focus_jupiter)
+                             focus_jupiter=args.focus_jupiter,
+                             focus_night=args.focus_night)
     root.mainloop()
 
 
