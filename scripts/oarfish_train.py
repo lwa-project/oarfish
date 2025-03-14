@@ -62,17 +62,19 @@ if __name__ == "__main__":
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
         )
     parser.add_argument('--batch_size', type=int, default=32,
-                      help='Batch size for training')
+                      help='batch size for training')
     parser.add_argument('--epochs', type=int, default=30,
-                      help='Number of epochs to train')
+                      help='number of epochs to train')
     parser.add_argument('--patience', type=int, default=5,
-                      help='Early stopping patience')
+                      help='early stopping patience')
+    parser.add_argument('--multi-only', action='store_true',
+                        help='only train the multi-class model')
     parser.add_argument('--dataset-dir', type=str, default='.',
-                        help='Directory containing the binary and multi-class training/validation data')
+                        help='directory containing the binary and multi-class training/validation data')
     parser.add_argument('--checkpoint-dir', type=str, default='checkpoints',
-                      help='Directory to save model checkpoints')
+                      help='directory to save model checkpoints')
     parser.add_argument('--log-dir', type=str, default='logs',
-                      help='Directory to save training logs')
+                      help='directory to save training logs')
     args = parser.parse_args()
     
     # Setup logging
@@ -87,7 +89,7 @@ if __name__ == "__main__":
     )
     logger = logging.getLogger(__name__)
     
-    if True:
+    if not args.multi_only:
         # Part 1 - Binary Classifier
         m = classify.BinaryLWATVClassifier()
         
