@@ -120,7 +120,8 @@ class DualModelPredictor:
         # Load binary model
         self.binary_path = os.path.abspath(binary_model_path)
         self.binary_model = BinaryLWATVClassifier()
-        binary_checkpoint = torch.load(binary_model_path, map_location=self.device)
+        binary_checkpoint = torch.load(binary_model_path, map_location=self.device,
+                                       weights_only=False)
         self.binary_model.load_state_dict(binary_checkpoint['model_state_dict'])
         self.binary_model = self.binary_model.to(self.device)
         self.binary_model.eval()
@@ -128,7 +129,8 @@ class DualModelPredictor:
         # Load multi-class model
         self.multi_path = os.path.abspath(multi_model_path)
         self.multi_model = MultiLWATVClassifier()
-        multi_checkpoint = torch.load(multi_model_path, map_location=self.device)
+        multi_checkpoint = torch.load(multi_model_path, map_location=self.device,
+                                      weights_only=False)
         self.multi_model.load_state_dict(multi_checkpoint['model_state_dict'])
         self.multi_model = self.multi_model.to(self.device)
         self.multi_model.eval()

@@ -19,6 +19,17 @@ from .classify import BinaryLWATVClassifier, MultiLWATVClassifier
 
 logger = logging.getLogger(__name__)
 
+
+try:
+    from torch.serialization import add_safe_globals
+    
+    add_safe_globals({'oarfish.classify.BinaryLWATVClassifier': BinaryLWATVClassifier,
+                      'oarfish.classify.MultiLWATVClassifier': MultiLWATVClassifier,
+                     })
+except ImportError:
+    pass
+
+
 class ModelTrainer:
     def __init__(self, model: nn.Module, num_epochs: int=10, num_steps: int=10,
                        device: str='cuda' if torch.cuda.is_available() else 'cpu',
@@ -82,7 +93,7 @@ class ModelTrainer:
             
     def load_checkpoint(self, checkpoint_path: str) -> int:
         """Load model checkpoint"""
-        checkpoint = torch.load(checkpoint_path)
+        checkpoint = torch.load(checkpoint_path, weights_only=False)
         if 'code_checksum' in checkpoint:
             if checkpoint['code_checksum'] != CODE_CHECKSUM:
                 print("Warning: checksum mis-match between software and checkpoint data")
@@ -581,23 +592,12 @@ class EnsembleTrainer:
         """Load ensemble metadata"""
         metadata_path = os.path.join(checkpoint_dir, 'ensemble_metadata.pt')
         if os.path.exists(metadata_path):
-            metadata = torch.load(metadata_path)
+            metadata = torch.load(metadata_path, weights_only=False)
             logger.info("Loaded ensemble metadata:")
             for model_meta in metadata['model_metrics']:
                 logger.info(f"Model {model_meta['model_index']}: "
                           f"Best val acc: {model_meta['best_val_acc']:.2f}, "
                           f"Best epoch: {model_meta['best_epoch']}")
-
-
-try:
-    from torch.serialization import add_safe_globals
-    
-    add_safe_globals({'oarfish.classify.BinaryLWATVClassifier': BinaryLWATVClassifier,
-                      'oarfish.classify.MultiLWATVClassifier': MultiLWATVClassifier,
-                     })
-except ImportError:
-    pass
-
 
 def analyze_checkpoint(checkpoint_path: str, val_dataset: Optional[LWATVDataset]=None) -> Dict[str, Any]:
     """
@@ -611,7 +611,7 @@ def analyze_checkpoint(checkpoint_path: str, val_dataset: Optional[LWATVDataset]
         dict containing available metrics and model info
     """
     # Load checkpoint
-    checkpoint = torch.load(checkpoint_path)
+    checkpoint = torch.load(checkpoint_path, weights_only=False)
     
     # Extract saved metrics
     metrics = {
