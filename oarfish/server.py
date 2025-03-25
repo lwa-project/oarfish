@@ -127,7 +127,7 @@ class PredictionServer:
             self.sock.send_multipart(results)
             
             t_end = time.time()
-            t_resp = t_start - t_end
+            t_resp = t_end - t_start
             self.request_stats['last_success'] = t_end
             self.request_stats['response_times'].append(t_resp)
             
