@@ -130,6 +130,7 @@ class PredictionServer:
             t_resp = t_end - t_start
             self.request_stats['last_success'] = t_end
             self.request_stats['response_times'].append(t_resp)
+            self.request_stats['success'] += 1
             
         except zmq.error.Again as e:
             self.request_stats['send_failed'] += 1
