@@ -53,7 +53,7 @@ setup(name                 = "oarfish",
       include_package_data = True,
       python_requires      = '>=3.8',
       install_requires     = ['numpy', 'pyzmq', 'astropy'],
-      extra_requires       = {'full': ['torch', 'torchvision', 'scipy', 'scikit-learn'],
+      extra_require        = {'full': ['torch', 'torchvision', 'scipy', 'scikit-learn'],
                               'client': []},
       zip_safe             = False
 )
