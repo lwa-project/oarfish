@@ -30,8 +30,8 @@ if __name__ == '__main__':
                         help='binary model to use for prediction')
     parser.add_argument('--multi-model', type=str, default=DEFAULT_MULTI,
                         help='multi-class model to use for prediction')
-    parseradd_argument('-r', '--report-interval', type=int, default=600,
-                       help='connection statistics report interval; 0 disables')
+    parser.add_argument('-r', '--report-interval', type=int, default=600,
+                        help='connection statistics report interval; 0 disables')
     parser.add_argument('-d', '--debug', action='store_true',
                         help='print debug messages as well as info and higher')
     args = parser.parse_args()

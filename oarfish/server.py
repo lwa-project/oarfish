@@ -1,12 +1,13 @@
 import zmq
 import json
+import time
 import queue
 import numpy as np
 from logging import Logger
 from functools import lru_cache
 from collections import deque
 
-from typing import Optional, Any, Tuple, Union
+from typing import Optional, Any, Tuple, Union, Dict
 
 from torch.utils.data import DataLoader
 
@@ -66,7 +67,7 @@ class PredictionServer:
         if self.logger:
             self.logger.info(f"Stopped prediction server on {self.address} port {self.port}")
             
-    ef get_stats() -> Dict[str, Any]:
+    def get_stats() -> Dict[str, Any]:
         """
         Get connection statistics about the client that include:
          * how long it has been since start() was called
@@ -91,11 +92,11 @@ class PredictionServer:
         return {'running': self.ctx is not None,
                 'uptime': uptime,
                 'requests': {'total': self.request_stats['total'],
-                             'send_failed': self.request_stats['send_failed']
-                             'error': self.request_stats['error']
-                             'timeout': self.request_stats['timeout']
+                             'send_failed': self.request_stats['send_failed'],
+                             'error': self.request_stats['error'],
+                             'timeout': self.request_stats['timeout'],
                              'successful': self.request_stats['success']
-                            }
+                            },
                 'last_successful_response': last_good,
                 'average_response_time': resp_time
                }

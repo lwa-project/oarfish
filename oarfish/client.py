@@ -109,11 +109,11 @@ class PredictionClient:
                 'connected': self.ctx is not None,
                 'uptime': uptime,
                 'requests': {'total': self.request_stats['total'],
-                             'send_failed': self.request_stats['send_failed']
-                             'error': self.request_stats['error']
-                             'timeout': self.request_stats['timeout']
-                             'successful': self.request_stats['success']
-                            }
+                             'send_failed': self.request_stats['send_failed'],
+                             'error': self.request_stats['error'],
+                             'timeout': self.request_stats['timeout'],
+                             'successful': self.request_stats['success'],
+                            },
                 'last_successful_response': last_good,
                 'average_response_time': resp_time
                }
