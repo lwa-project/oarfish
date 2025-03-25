@@ -82,6 +82,17 @@ def predict_with_uncertainty(model: BaseLWATVClassifier, dataset: LWATVDataset,
         
         return result
 
+
+try:
+    from torch.serialization import add_safe_globals
+    
+    add_safe_globals({'oarfish.classify.BinaryLWATVClassifier': BinaryLWATVClassifier,
+                      'oarfish.classify.MultiLWATVClassifier': MultiLWATVClassifier,
+                     })
+except ImportError:
+    pass
+
+
 class DualModelPredictor:
     """
     Class for batch processing OIMS files using both binary and multi-class models

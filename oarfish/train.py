@@ -589,6 +589,16 @@ class EnsembleTrainer:
                           f"Best epoch: {model_meta['best_epoch']}")
 
 
+try:
+    from torch.serialization import add_safe_globals
+    
+    add_safe_globals({'oarfish.classify.BinaryLWATVClassifier': BinaryLWATVClassifier,
+                      'oarfish.classify.MultiLWATVClassifier': MultiLWATVClassifier,
+                     })
+except ImportError:
+    pass
+
+
 def analyze_checkpoint(checkpoint_path: str, val_dataset: Optional[LWATVDataset]=None) -> Dict[str, Any]:
     """
     Analyze a model checkpoint file to extract training metrics and optionally compute current metrics
