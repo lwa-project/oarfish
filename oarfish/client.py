@@ -83,7 +83,7 @@ class PredictionClient:
         if self.logger:
             self.logger.info("Disconnected from prediction server")
             
-    def get_stats() -> Dict[str, Any]:
+    def get_stats(self) -> Dict[str, Any]:
         """
         Get connection statistics about the client that include:
          * how long it has been since start() was called
