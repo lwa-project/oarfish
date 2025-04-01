@@ -100,7 +100,7 @@ if __name__ == "__main__":
         
         # Get training and validation data
         train_paths, train_labels, train_counts = get_data_from_dir(f"{args.dataset_dir}/binary/train", m)
-        val_paths, val_labels, val_counts = get_data_from_dir(f"{args.dataset_dir}binary/val", m)
+        val_paths, val_labels, val_counts = get_data_from_dir(f"{args.dataset_dir}/binary/val", m)
         
         if not train_paths or not val_paths:
             logger.error("BINARY - No images found in one or both directories")
