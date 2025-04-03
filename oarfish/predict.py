@@ -176,30 +176,41 @@ class DualModelPredictor:
         first = (indices[0].item(), values[0].item())
         second = (indices[1].item(), values[1].item())
         
+        # Indicies to labels
+        binary_class = self.binary_model.get_class_name(binary_pred)
+        first_class = self.multi_model.get_class_name(first[0])
+        second_class = self.multi_model.get_class_name(second[0])
+        
         # Compute quality score as specified
         q = 0.0
-        if self.binary_model.get_class_name(binary_pred) == 'good':
+        if binary_class == 'good':
             q += binary_conf * 0.25
         else:
             q += (1 - binary_conf) * 0.25
             
-        if self.multi_model.get_class_name(first[0]) == 'good':
+        if first_class == 'good':
             q += first[1] + (1 - second[1])
-        elif self.multi_model.get_class_name(second[0]) == 'good':
+        elif second_class == 'good':
             q += second[1] + (1 - first[1])
             
         q /= 2.25
         
-        # Determine final label based on quality score
-        if q > 0.75:
-            final = 'good'
-        elif q > 0.5:
-            final = 'low_rfi'
-        elif q > 0.3:
-            final = 'medium_rfi'
+        # Determine final label based on a combination of the first multi-
+        # class label and quality score
+        if first_class in ('sun', 'jupiter') and first[1] > 0.6:
+            ## Looks like a special class, go with it
+            final = first_class
         else:
-            final = self.multi_model.get_class_name(first[0])
-            
+            ## Nope, use the usual quality score metrics
+            if q > 0.75:
+                final = 'good'
+            elif q > 0.5:
+                final = 'low_rfi'
+            elif q > 0.3:
+                final = 'medium_rfi'
+            else:
+                final = first_class
+                
         return q, final
     
     def empty_cache(self):
