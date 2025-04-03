@@ -167,7 +167,7 @@ class PredictionClient:
                         else:
                             rrequest_id = rrequest_id.decode()
                             if self.logger:
-                                self.logger.info(f"Discarding response to request ID {rrequest_id}")
+                                self.logger.info(f"Discarding response to request ID {rrequest_id.decode()}")
                                 
                 except zmq.error.Again:
                     continue
@@ -175,7 +175,7 @@ class PredictionClient:
             self.request_stats['timeout'] += 1
             
             if self.logger:
-                self.logger.warn(f"Request {request_id} timed out after {self.timeout}s")
+                self.logger.warn(f"Request {request_id.decode()} timed out after {self.timeout}s")
             return None
             
         except Exception as e:
