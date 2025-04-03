@@ -92,7 +92,7 @@ class BaseLWATVClassifier(nn.Module):
         
         # Enhanced astronomical feature processing
         self.astro_processor = nn.Sequential(
-            nn.Linear(22, 64),
+            nn.Linear(23, 64),
             nn.BatchNorm1d(64),
             nn.LeakyReLU(0.1),
             nn.Dropout(0.2),

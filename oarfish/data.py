@@ -135,9 +135,9 @@ class LWATVDataset(Dataset):
         stokes_i = np.clip(stokes_i, vmin, vmax) / vmax
         stokes_v = np.clip(stokes_v, vmin, vmax) / vmax
         
-         # Get astronomical features
+        # Get astronomical features
         timestamp = Time(metadata['start_time'], format='mjd', scale='utc')
-        lst = wcs.wcs.crval[0] % 360
+        lst, ast = get_time_references(timestamp, wcs, location=location)
        
         sky_i, sky_v = extract_sky(stokes_i, stokes_v, topo_wcs) 
         hrz_i, hrz_v = extract_horizon(stokes_i, stokes_v, wcs)
@@ -202,7 +202,8 @@ class LWATVDataset(Dataset):
             sky['med_v'],
             sky['iqr_i'],
             sky['iqr_v'],
-            lst/360,
+            lst/24.0,
+            ast/24.0,
             metadata['start_freq']/98e6
         ], dtype=torch.float32)
         
@@ -305,10 +306,13 @@ class MultiChannelDataset(LWATVDataset):
             stokes_i[c] = np.clip(stokes_i[c], vmin, vmax) / vmax
             stokes_v[c] = np.clip(stokes_v[c], vmin, vmax) / vmax
         
-         # Get astronomical features
+        # Get astronomical features
         timestamp = Time(metadata['start_time'], format='mjd', scale='utc')
-        lst = wcs.wcs.crval[0] % 360
-       
+        lst, ast = get_time_references(timestamp, wcs, location=location)
+        
+        # Create a list of all frequencies to analyze
+        freqs = [metadata['start_freq'] + c*metadata['bandwidth'] for c in range(nchan)]
+        
         sky_i, sky_v = extract_sky(stokes_i, stokes_v, topo_wcs) 
         hrz_i, hrz_v = extract_horizon(stokes_i, stokes_v, wcs)
         byd_i, byd_v = extract_beyond_horizon(stokes_i, stokes_v, topo_wcs)
@@ -318,8 +322,7 @@ class MultiChannelDataset(LWATVDataset):
                           location=location, window_size=15)
         jupiter = extract_jupiter(stokes_i, stokes_v, timestamp, wcs,
                                   location=location, window_size=15)
-        for c in range(nchan):
-            f = metadata['start_freq'] + c*metadata['bandwidth']
+        for c,f in enumerate(freqs):
             if f > 40e6:
                 jupiter[c] = {}
                 
@@ -377,7 +380,8 @@ class MultiChannelDataset(LWATVDataset):
                 sky[c]['med_v'],
                 sky[c]['iqr_i'],
                 sky[c]['iqr_v'],
-                lst/360,
+                lst/24.0,
+                ast/24.0,
                 (metadata['start_freq'] + c*metadata['bandwidth'])/98e6
             ], dtype=torch.float32)
             
