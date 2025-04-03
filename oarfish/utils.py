@@ -67,6 +67,23 @@ def station_to_earthlocation(station_id: Union[str, bytes]) -> EarthLocation:
     return station_location
 
 
+def get_time_references(timestamp: Time, wcs: WCS,
+                        location: Optional[EarthLocation]=None) -> Tuple[float, float]:
+    """
+    Given a timestamp, a WCS instance, and an optional EarthLocation, return
+    a two-element tuple of:
+     * the approximate local sidereal time in hours
+     * the approximate local apparent solar time in hours (0 = midnight).
+    """
+    
+    lst = wcs.wcs.crval[0] % 360 / 15.0
+    sc = get_body('sun', timestamp, location=location)
+    ha = (lst - sc.ra.hourangle) % 24
+    lt = (12 + ha) % 24
+    
+    return lst, lt
+
+
 @lru_cache(maxsize=32)
 def _topo_wcs_to_altaz(xsize: int, ysize: int, topo_wcs: WCS) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -338,8 +355,8 @@ def characterize_beyond_horizon(byd_i: np.ndarray, byd_v: np.ndarray) -> Union[D
 
 def extract_sources(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time, wcs: WCS,
                     location: Optional[EarthLocation]=None, window_size: int=15,
-                    srcs: List[str]=['CygA', 'CasA', 'TauA', 'VirA']) -> Union[Dict[str, List[np.ndarray]],
-                                                                               List[Dict[str, np.ndarray]]]:
+                    srcs: List[str]=['CygA', 'CasA', 'TauA', 'VirA']) -> Union[Dict[str, Dict],
+                                                                               List[Dict[str, Dict]]]:
     """
     Return a set of postage stamps (both Stokes I and |V|) for the list of
     provided sources.
@@ -357,7 +374,7 @@ def extract_sources(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time,
     wpad = window_size //2
     
     pc = wcs.pixel_to_world(*(wcs.wcs.crpix-1))
-    srcs_xy = {}
+    srcs_xyz = {}
     for src in srcs:
         try:
             sc = SOURCES[src]
@@ -371,14 +388,17 @@ def extract_sources(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time,
             
         y, x = wcs.world_to_pixel(sc)
         y, x = int(round(y.item())), int(round(x.item()))
-        srcs_xy[src] = (y, x)
+        srcs_xyz[src] = (y, x, d.deg)
         
     results = []
     for c in range(nchan):
         regions = {}
-        for src,(y,x) in srcs_xy.items():
-            regions[src] = [stokes_i[c, x-wpad:x+wpad+1, y-wpad:y+wpad+1],
-                            stokes_v[c, x-wpad:x+wpad+1, y-wpad:y+wpad+1]]
+        for src,(y,x,z) in srcs_xyz.items():
+            regions[src] = {'stokes_i': stokes_i[c, x-wpad:x+wpad+1, y-wpad:y+wpad+1],
+                            'stokes_v': stokes_v[c, x-wpad:x+wpad+1, y-wpad:y+wpad+1],
+                            'zenith_angle': z,
+                            'timestamp': timestamp
+                           }
         results.append(regions)
         
     if reshape_needed:
@@ -389,8 +409,8 @@ def extract_sources(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time,
 
 def extract_sun(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time, wcs: WCS,
                 location: Optional[EarthLocation]=None,
-                window_size: int=15) -> Union[Dict[str, List[np.ndarray]],
-                                              List[Dict[str, np.ndarray]]]:
+                window_size: int=15) -> Union[Dict[str, Dict],
+                                              List[Dict[str, Dict]]]:
     """
     Similar to extract_sources but only works on the Sun.
     """
@@ -418,9 +438,12 @@ def extract_sun(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time, wcs
         regions = {}
         if d.deg <= HORIZON_ZA_DEG:
             y, x = int(round(sun_y.item())), int(round(sun_x.item()))
-            regions['sun'] = [stokes_i[c, x-wpad:x+wpad+1, y-wpad:y+wpad+1],
-                              stokes_v[c, x-wpad:x+wpad+1, y-wpad:y+wpad+1]]
-            if regions['sun'][0].size == 0:
+            regions['sun'] = {'stokes_i': stokes_i[c, x-wpad:x+wpad+1, y-wpad:y+wpad+1],
+                              'stokes_v': stokes_v[c, x-wpad:x+wpad+1, y-wpad:y+wpad+1],
+                              'zenith_angle': d.deg,
+                              'timestamp': timestamp
+                             }
+            if regions['sun']['stokes_i'].size == 0:
                 del regions['sun']
         results.append(regions)
         
@@ -461,9 +484,12 @@ def extract_jupiter(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time,
         regions = {}
         if d.deg <= HORIZON_ZA_DEG: 
             y, x = int(round(jupiter_y.item())), int(round(jupiter_x.item()))
-            regions['jupiter'] = [stokes_i[c, x-wpad:x+wpad+1, y-wpad:y+wpad+1],
-                                  stokes_v[c, x-wpad:x+wpad+1, y-wpad:y+wpad+1]]
-            if regions['jupiter'][0].size == 0:
+            regions['jupiter'] = {'stokes_i': stokes_i[c, x-wpad:x+wpad+1, y-wpad:y+wpad+1],
+                                  'stokes_v': stokes_v[c, x-wpad:x+wpad+1, y-wpad:y+wpad+1],
+                                  'zenith_angle': d.deg,
+                                  'timestamp': timestamp
+                                 }
+            if regions['jupiter']['stokes_i'].size == 0:
                 del regions['jupiter']
         results.append(regions)
         
@@ -473,8 +499,57 @@ def extract_jupiter(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time,
     return results
 
 
-def characterize_sources(regions: Union[Dict[str, float], List[Dict[str, float]]]) -> Union[Dict[str, float],
-                                                                                            List[Dict[str, float]]]:
+@lru_cache(maxsize=64)
+def get_baars_flux(source: str, frequency: float, timestamp: Optional[Time]=None) -> float:
+    """
+    Given a source name, an observing frequency in Hz, and an optional
+    timestamp, return the Baars et al. (1977) flux density of source in Jy.
+    """
+    
+    log_freq = np.log10(frequency/1e6)
+    
+    if source == 'CygA':
+        log_flux = 4.695 + 0.085*log_freq - 0.178*log_freq**2
+    elif source == 'CasA':
+        log_flux = 5.625 - 0.634*log_freq - 0.023*log_freq**2
+    elif source == 'TauA':
+        log_flux = 3.915 - 0.299*log_freq
+    elif source == 'VirA':
+        log_flux = 5.023 - 0.856*log_freq
+    else:
+        raise ValueError(f"Unknown source '{source}'")
+        
+    flux = 10**log_flux
+    
+    # Apply the secular decay to Cas A
+    if source == 'CasA':
+        age = 2025 - 1965
+        if timestamp is not None:
+            age = timestamp.jyear - 1965
+        flux *= (1 - 0.008)**age
+        
+    return flux
+
+
+def get_approx_beam_corr(zenith_angle: float) -> float:
+    """
+    Use the beam response correction terms from Schinzel & Polisensky (2014,
+    LWA Memo #202) to come up a rough primary beam correction to apply to
+    observed source flux densities.
+    """
+    
+    # Convert to altitude since the #202 equations are in that
+    altitude = 90 - zenith_angle
+    
+    # Compute XX, YY, and then average
+    xx = 155*altitude**-1.55 + 0.84
+    yy = 14.1*altitude**-0.62 + 0.10
+    
+    return max(1, (xx + yy)/2.0)
+
+
+def characterize_sources(regions: Union[Dict[str, Dict], List[Dict[str, Dict]]])-> Union[Dict[str, float],
+                                                         List[Dict[str, float]]]:
     """
     Given a dictionary of postage stamps, characterize the sources and return
     a set of metrics.  The are:
@@ -484,6 +559,8 @@ def characterize_sources(regions: Union[Dict[str, float], List[Dict[str, float]]
      * Average ratio of the minor to major axes FWHM estimates
      * Average value of the position angle of the major axis
      * Average ratio of Stokes |V| to I at the Stokes I peak location
+     * Average flux scale factor to get from primary beam corrected observed
+       fluxes to Jy
     """
     
     reshape_needed = False
@@ -494,7 +571,12 @@ def characterize_sources(regions: Union[Dict[str, float], List[Dict[str, float]]
     results = []
     for c_region in regions:
         c_results = {}
-        for src,(stokes_i,stokes_v) in c_region.items():
+        for src,data in c_region.items():
+            stokes_i = data['stokes_i']
+            stokes_v = data['stokes_v']
+            zenith_angle = data['zenith_angle']
+            timestamp = data['timestamp']
+            
             tot = stokes_i.sum() + 1e-8
             j, i = np.indices(stokes_i.shape)
             
@@ -512,7 +594,10 @@ def characterize_sources(regions: Union[Dict[str, float], List[Dict[str, float]]
             wy = np.sqrt(evals[1])
             th = np.arctan2(evecs[1,0], evecs[0,0]) % np.pi
             
-            bk = np.median(stokes_i)
+            bk = np.median(np.stack([stokes_i[0,:],
+                                     stokes_i[-1,:],
+                                     stokes_i[:,0],
+                                     stokes_i[:,-1]]))
             pk = stokes_i.max()
             
             c = np.where(stokes_i == pk)
