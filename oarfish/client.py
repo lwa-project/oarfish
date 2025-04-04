@@ -57,8 +57,8 @@ class PredictionClient:
         self.sock.setsockopt(zmq.IDENTITY, self.client_id.encode())
         self.sock.setsockopt(zmq.LINGER, 0)
         self.sock.setsockopt(zmq.RCVTIMEO, int(self.timeout*1000))
-        self.sock.setsockopt(zmq.RECONNECT_IVL, 100)
-        self.sock.setsockopt(zmq.RECONNECT_IVL_MAX, 10000)
+        self.sock.setsockopt(zmq.RECONNECT_IVL, max(25, min(50, int(self.timeout*1000*0.05))))
+        self.sock.setsockopt(zmq.RECONNECT_IVL_MAX, max(250, min(1000, int(self.timeout*1000*0.5))))
         
         self._reset_stats()
         self.request_stats['start_time'] = time.time()
