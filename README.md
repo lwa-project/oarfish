@@ -40,14 +40,14 @@ Training
 The two models included with the library are trained using a collection of images pulled from the [LWA1 PASI archive](https://lda10g.alliance.unm.edu/PASI/) and the 
 [LWA-SV Orville archive](https://lda10g.alliance.unm.edu/Orville/)[^1].  These images
 span the full range of time and frequency that Orville has been operating over at
-Sevilleta.  For the binary classifier a training set of roughly 900 good and 900 bad images was used.
+Sevilleta.  For the binary classifier a training set of roughly 2000 good and 2400 bad images was used.
 The multi-class model was trained on:
  * roughly 2200 RFI-free images,
  * about 1600 low to medium RFI images,
  * ~1000 high RFI images,
  * a little under 1000 corrupted images,
- * almost 260 images where the Sun was flaring, and
- * almost 50 images where Jupiter was bursting.
+ * about 230 images where the Sun was flaring, and
+ * almost 45 images where Jupiter was bursting.
 
 The validation sets for both followed a 80/20 split for training/validation.
 
