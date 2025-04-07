@@ -167,7 +167,7 @@ class PredictionClient:
                         else:
                             rrequest_id = rrequest_id.decode()
                             if self.logger:
-                                self.logger.info(f"Discarding response to request ID {rrequest_id.decode()}")
+                                self.logger.info(f"Discarding response to request ID {rrequest_id}")
                                 
                 except zmq.error.Again:
                     continue
