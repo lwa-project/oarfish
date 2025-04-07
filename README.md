@@ -67,4 +67,21 @@ prediction on a `DataSet`, and returns a full set of metrics.
 If you are working with Orville .oims files there is also a ZeroMQ-based server and client included with
 the scripts.
 
+Verifying the Model Files
+-------------------------
+The models distributed with oarfish are signed using the [model-signing](https://pypi.org/project/model-signing/) Python module.  To verify the models install `model-signing` and then use the module's `model_signing` script:
+```
+model_signing verify path_to_oarfish/oarfish/models/binary.pt \
+    --signature path_to_oarfish/oarfish/models/binary.sig \
+    --identity jayce.dowell@gmail.com \
+    --identity_provider https://github.com/login/oauth
+```
+and
+```
+model_signing verify path_to_oarfish/oarfish/models/multi.pt \
+    --signature path_to_oarfish/oarfish/models/multi.sig \
+    --identity jayce.dowell@gmail.com \
+    --identity_provider https://github.com/login/oauth
+```
+
 [^1]: There were a handful of LWA-NA Orville images used but not enough to dramatically alter the training.
