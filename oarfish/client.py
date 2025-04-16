@@ -175,7 +175,7 @@ class PredictionClient:
             self.request_stats['timeout'] += 1
             
             if self.logger:
-                self.logger.warn(f"Request {request_id.decode()} timed out after {self.timeout}s")
+                self.logger.warn(f"Request {request_id.decode()} timed out after {self.timeout} s")
             return None
             
         except Exception as e:
