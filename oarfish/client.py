@@ -188,9 +188,10 @@ class PredictionClient:
             try:
                 if poller is not None:
                     poller.unregister(self.sock)
-            except:
-                pass
-                
+            except Exception as e:
+                if self.logger:
+                    self.logger.warn(f"Error unregistering poller: {str(e)}")
+                    
     def identify(self) -> Optional[Dict[str, Any]]:
         """
         Query the prediction server for information about how it makes
