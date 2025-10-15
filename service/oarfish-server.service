@@ -22,8 +22,8 @@ Environment=PYTHONUNBUFFERED=1
 Environment=LD_LIBRARY_PATH=/usr/local/cuda-11.6/lib64:/home/jdowell/bifrost8_verbs_py3/lib
 
 ExecStart=/bin/bash -ec '\
-. /home/jdowell/ai/bin/activate
-cd /home/jdowell/oarfish/scripts/
+. /home/jdowell/ai/bin/activate && \
+cd /home/jdowell/oarfish/scripts/ && \
 python3 ./oarfish_server.py \
         --debug'
 
