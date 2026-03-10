@@ -246,6 +246,8 @@ class PredictionClient:
         metadata['image_cube_shape'] = image_cube.shape
         
         metadata = json.dumps(metadata).encode()
+        if image_cube.dtype != np.float32:
+            image_cube = image_cube.astype(np.float32)
         image_cube = image_cube.tobytes()
         
         results = self._send_and_recieve([metadata, image_cube])
