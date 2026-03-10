@@ -38,7 +38,7 @@ write_version_info()
 
 
 setup(name                 = "oarfish",
-      version              = "0.1.0",
+      version              = "0.1.1",
       description          = "LWATV image classifier",
       long_description     = "Deep learning for classifying LWATV images",
       author               = "J. Dowell",
