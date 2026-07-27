@@ -243,14 +243,17 @@ class PredictionClient:
         if len(image_cube.shape) == 2:
             reshapeNeeded = True
             image_cube = image_cube.reshape(1, *image_cube.shape)
-        metadata['image_cube_shape'] = image_cube.shape
-        
-        metadata = json.dumps(metadata).encode()
         if image_cube.dtype != np.float32:
+            if self.logger:
+                self.logger.warning("Demoting image data from %s to float32", image_cube.dtype)
             image_cube = image_cube.astype(np.float32)
-        image_cube = image_cube.tobytes()
-        
-        results = self._send_and_recieve([metadata, image_cube])
+
+        transport = json.dumps({'shape': image_cube.shape,
+                                'dtype': image_cube.dtype.str}).encode()
+        metadata_bytes = json.dumps(metadata).encode()
+        image_bytes = image_cube.tobytes()
+
+        results = self._send_and_recieve([transport, metadata_bytes, image_bytes])
         if results:
             results = json.loads(results)
             if not full_output:

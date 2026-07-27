@@ -112,7 +112,7 @@ class PredictionServer:
             return False
             
         try:
-            if len(parts) == 4:
+            if len(parts) == 5:
                 results = self.process(*parts)
             else:
                 results = self.identify(*parts)
@@ -152,10 +152,11 @@ class PredictionServer:
                              lat=lat,
                              height=height)
         
-    def process(self, client_id: bytes, request_id: bytes, metadata: bytes, image_cube: bytes) -> Tuple[bytes, bytes, bytes]:
+    def process(self, client_id: bytes, request_id: bytes, transport: bytes, metadata: bytes, image_cube: bytes) -> Tuple[bytes, bytes, bytes]:
+        transport = json.loads(transport)
         metadata = json.loads(metadata)
-        image_cube = np.frombuffer(image_cube, dtype=np.float32)
-        image_cube = image_cube.reshape(*metadata['image_cube_shape'])
+        image_cube = np.frombuffer(image_cube, dtype=np.dtype(transport['dtype']))
+        image_cube = image_cube.reshape(*transport['shape'])
         image_cube = image_cube.copy()
         
         dataset = MultiChannelDataset(metadata,
