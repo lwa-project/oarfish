@@ -8,7 +8,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from . import CODE_CHECKSUM
-from .data import LWATVDataset
+from .data import LWATVDataset, MAX_JUPITER_FREQ, RESCALE_REF_FREQ
 from .classify import *
 
 def predict_image(model: BaseLWATVClassifier, dataset: LWATVDataset,
@@ -24,12 +24,20 @@ def predict_image(model: BaseLWATVClassifier, dataset: LWATVDataset,
     
     with torch.no_grad():
         output = model(img_tensor, horizon_tensor, astro_tensor)  # Pass both tensors
+        try:
+            ## Make sure we aren't triggering Jupiter above 40 MHz
+            _jupiter_idx = model.class_names.index('jupiter')
+            above_40MHz = torch.where(astro_tensor[:,-1] > MAX_JUPITER_FREQ/RESCALE_REF_FREQ)[0]
+            output[above_40MHz,_jupiter_idx] = -torch.inf
+        except ValueError:
+            pass
         prob = torch.softmax(output, dim=1)
         prediction = output.argmax(dim=1).item()
         confidence = prob[0][prediction].item()
     
     class_name = model.get_class_name(prediction)
     return prediction, confidence
+
 
 def predict_with_uncertainty(model: BaseLWATVClassifier, dataset: LWATVDataset,
                              confidence_threshold: float=0.8, 
@@ -56,6 +64,13 @@ def predict_with_uncertainty(model: BaseLWATVClassifier, dataset: LWATVDataset,
     
     with torch.no_grad():
         output = model(img_tensor, horizon_tensor, astro_tensor)
+        try:
+            ## Make sure we aren't triggering Jupiter above 40 MHz
+            _jupiter_idx = model.class_names.index('jupiter')
+            above_40MHz = torch.where(astro_tensor[:,-1] > MAX_JUPITER_FREQ/RESCALE_REF_FREQ)[0]
+            output[above_40MHz,_jupiter_idx] = -torch.inf
+        except ValueError:
+            pass
         probabilities = F.softmax(output, dim=1)
         
         # Get prediction and confidence
@@ -69,7 +84,7 @@ def predict_with_uncertainty(model: BaseLWATVClassifier, dataset: LWATVDataset,
         # Create class probabilities dictionary
         class_probs = {
             model.get_class_name(i): probabilities[0][i].item()
-            for i in range(len(model.CLASS_NAMES))
+            for i in range(len(model.class_names))
         }
         
         result = {
@@ -144,6 +159,12 @@ class DualModelPredictor:
             self.logger.info(f"Loaded multi model with validation accuracy: {self.multi_val_acc:.2f}%")
             
         self._batches_processed = 0
+        
+        self._jupiter_idx = None
+        try:
+            self._jupiter_idx = self.multi_model.class_names.index('jupiter')
+        except ValueError:
+            pass
             
     def identify(self) -> Dict[str, Any]:
         ident = {'name': 'DualModelPredictor',
@@ -251,6 +272,10 @@ class DualModelPredictor:
                 
                 # Get multi-class model predictions
                 multi_outputs = self.multi_model(img_tensors, hrz_tensors, astro_tensors)
+                if self._jupiter_idx is not None:
+                    ## Make sure we aren't triggering Jupiter above 40 MHz
+                    above_40MHz = torch.where(astro_tensors[:,-1] > MAX_JUPITER_FREQ/RESCALE_REF_FREQ)[0]
+                    multi_outputs[above_40MHz,self._jupiter_idx] = -torch.inf
                 multi_probs = torch.softmax(multi_outputs, dim=1)
                 multi_preds = multi_outputs.argmax(dim=1)
                 multi_confs = torch.gather(multi_probs, 1, multi_preds.unsqueeze(1))

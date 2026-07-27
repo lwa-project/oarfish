@@ -14,6 +14,13 @@ import astropy.units as u
 
 from .utils import *
 
+#: Maximum frequency in Hz to expect for Jovian bursts
+MAX_JUPITER_FREQ = 40.0e6
+
+
+#: Reference frequency in Hz to rescale observed frequencies to
+RESCALE_REF_FREQ = 98e6
+
 
 def info_to_wcs(info: Dict[str,Any], image_size: Optional[int]=None) -> Tuple[WCS, WCS]:
     """
@@ -147,7 +154,7 @@ class LWATVDataset(Dataset):
         sun = extract_sun(stokes_i, stokes_v, timestamp, wcs,
                           location=location, window_size=15)
         jupiter = {}
-        if metadata['start_freq'] <= 40e6:
+        if metadata['start_freq'] <= MAX_JUPITER_FREQ:
             jupiter = extract_jupiter(stokes_i, stokes_v, timestamp, wcs,
                                       location=location, window_size=15)
         
@@ -204,7 +211,7 @@ class LWATVDataset(Dataset):
             sky['iqr_v'],
             lst/24.0,
             ast/24.0,
-            metadata['start_freq']/98e6
+            metadata['start_freq']/RESCALE_REF_FREQ
         ], dtype=torch.float32)
         
         return img_tensor, hrz_tensor, astro_tensor
@@ -382,7 +389,7 @@ class MultiChannelDataset(LWATVDataset):
                 sky[c]['iqr_v'],
                 lst/24.0,
                 ast/24.0,
-                (metadata['start_freq'] + c*metadata['bandwidth'])/98e6
+                (metadata['start_freq'] + c*metadata['bandwidth'])/RESCALE_REF_FREQ
             ], dtype=torch.float32)
             
             finals.append((img_tensor, hrz_tensor, astro_tensor))
