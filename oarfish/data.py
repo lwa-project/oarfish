@@ -93,28 +93,40 @@ def load_lwatv_data(filename: str) -> Tuple[np.ndarray, np.ndarray, Dict[str,Any
 
 
 class LWATVDataset(Dataset):
+    """
+    Dataset of LWATV Stokes I/|V| image pairs.
+
+    The dataset is deterministic by default:  building two datasets from the
+    same input and reading them gives bit-identical tensors.  Set
+    ``augment=True`` to turn on the training-time augmentation, which both
+    swaps in :meth:`training_transform` for the images and jitters the 1-D
+    horizon to match.  Augmentation is only appropriate while training.
+
+    A caller-supplied `transform` overrides the image pipeline in either mode;
+    `augment` still controls the horizon jitter.
+    """
+
     def __init__(self, image_paths: Union[str, List[str]], labels: Optional[int]=None,
-                       transform: Optional[Any]=None, station_location: Optional[EarthLocation]=None):
+                       transform: Optional[Any]=None, station_location: Optional[EarthLocation]=None,
+                       augment: bool=False):
         if not isinstance(image_paths, (tuple, list)):
             image_paths = [image_paths]
         self.image_paths = image_paths
         self.labels = labels
+        self.augment = augment
         if transform is None:
-            self.transform = transforms.Compose([
-            transforms.RandomRotation(15),  # Small rotations since orientation matters
-            transforms.RandomAffine(0, translate=(0.05, 0.05)),  # Small translations
-            transforms.ColorJitter(brightness=0.1, contrast=0.1),  # Slight intensity variations
-            *self.default_transform().transforms
-        ])
-        
+            self.transform = self.training_transform() if augment else self.default_transform()
+        else:
+            self.transform = transform
+
         # Default to LWA-SV location if none provided
         if station_location is None:
-            station_location = EarthLocation(lat=34.348358*u.deg, 
-                                             lon=-106.885783*u.deg, 
+            station_location = EarthLocation(lat=34.348358*u.deg,
+                                             lon=-106.885783*u.deg,
                                              height=1477.8*u.m
                                             )
         self.location = station_location
-        
+
     @staticmethod
     def default_transform() -> transforms.Compose:
         return transforms.Compose([
@@ -122,11 +134,27 @@ class LWATVDataset(Dataset):
             # No need for ToTensor() since we're already converting numpy to tensor
             # Normalization is handled in __getitem__ if not specified here
         ])
-    
+
+    @staticmethod
+    def training_transform() -> transforms.Compose:
+        """
+        The augmenting pipeline used during training.  This is
+        :meth:`default_transform` with random rotation/translation/intensity
+        jitter in front of it and is *not* reproducible from call to call.
+        """
+
+        return transforms.Compose([
+            transforms.RandomRotation(15),  # Small rotations since orientation matters
+            transforms.RandomAffine(0, translate=(0.05, 0.05)),  # Small translations
+            transforms.ColorJitter(brightness=0.1, contrast=0.1),  # Slight intensity variations
+            *LWATVDataset.default_transform().transforms
+        ])
+
     @staticmethod
     def _process_image_pair(metadata: Dict[str, Any], stokes_i: np.ndarray, stokes_v: np.ndarray,
                             location: Optional[EarthLocation]=None,
-                            transform: Optional[Any]=None) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+                            transform: Optional[Any]=None,
+                            augment: bool=False) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         # Build up the WCS
         wcs, topo_wcs = info_to_wcs(metadata, image_size=stokes_i.shape[0])
         
@@ -166,12 +194,15 @@ class LWATVDataset(Dataset):
         sun = characterize_sources(sun)
         jupiter = characterize_sources(jupiter)
         
-        # Extract the horizon and apply a small +/- 15 degree rotation manually
+        # Extract the horizon
         hi, hv = extract_1d_horizon(stokes_i, stokes_v, topo_wcs)
-        rr = int(round(np.random.rand()*6-3))
-        hi = np.roll(hi, rr)
-        hv = np.roll(hv, rr)
-        
+        if augment:
+            ## The horizon is 72 bins of 5 degrees each, so +/-3 bins matches the
+            ## +/-15 degree rotation training_transform() applies to the images
+            rr = int(round(np.random.rand()*6-3))
+            hi = np.roll(hi, rr)
+            hv = np.roll(hv, rr)
+
         # Convert to tensors
         stokes_i = torch.from_numpy(stokes_i).float().unsqueeze(0)
         stokes_v = torch.from_numpy(stokes_v).float().unsqueeze(0)
@@ -235,7 +266,8 @@ class LWATVDataset(Dataset):
         img_tensor, hrz_tensor, astro_tensor = self._process_image_pair(metadata,
                                                                         si, sv,
                                                                         self.location,
-                                                                        self.transform)
+                                                                        self.transform,
+                                                                        self.augment)
         # Done
         if self.labels is not None:
             label = self.labels[idx]
@@ -246,9 +278,10 @@ class LWATVDataset(Dataset):
 class SingleChannelDataset(LWATVDataset):
     def __init__(self, metadata: Dict[str, Any], stokes_i: np.ndarray, stokes_v: np.ndarray,
                        labels: Optional[int]=None, transform: Optional[Any]=None,
-                       station_location: Optional[EarthLocation]=None):
+                       station_location: Optional[EarthLocation]=None,
+                       augment: bool=False):
         super().__init__([''], labels=labels, transform=transform,
-                         station_location=station_location)
+                         station_location=station_location, augment=augment)
         if len(stokes_i.shape) != 2 or len(stokes_v.shape) != 2:
             raise RuntimeError("Expected a single frequency image for Stokes I and |V|")
         self._metadata = metadata
@@ -264,7 +297,8 @@ class SingleChannelDataset(LWATVDataset):
                                                                         self._stokes_i,
                                                                         self._stokes_v,
                                                                         self.location,
-                                                                        self.transform)
+                                                                        self.transform,
+                                                                        self.augment)
         
         if self.labels is not None:
             label = self.labels[idx]
@@ -275,10 +309,11 @@ class SingleChannelDataset(LWATVDataset):
 class MultiChannelDataset(LWATVDataset):
     def __init__(self, metadata: Dict[str, Any], stokes_i: np.ndarray, stokes_v: np.ndarray,
                        labels: Optional[int]=None, transform: Optional[Any]=None,
-                       station_location: Optional[EarthLocation]=None):
+                       station_location: Optional[EarthLocation]=None,
+                       augment: bool=False):
         nchan = stokes_i.shape[0]
         super().__init__(['']*nchan, labels=labels, transform=transform,
-                         station_location=station_location)
+                         station_location=station_location, augment=augment)
         if len(stokes_i.shape) != 3 or len(stokes_v.shape) != 3:
             raise RuntimeError("Expected image cube for Stokes I and |V|")
         self.nchan = nchan
@@ -291,7 +326,8 @@ class MultiChannelDataset(LWATVDataset):
     @staticmethod
     def _process_image_stack(metadata: Dict[str, Any], stokes_i: np.ndarray, stokes_v: np.ndarray,
                              location: Optional[EarthLocation]=None,
-                             transform: Optional[Any]=None) -> List[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
+                             transform: Optional[Any]=None,
+                             augment: bool=False) -> List[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
         if len(stokes_i.shape) == 2:
             stokes_i = stokes_i.reshape(1, *stokes_i.shape)
             stokes_v = stokes_v.reshape(1, *stokes_v.shape)
@@ -341,12 +377,15 @@ class MultiChannelDataset(LWATVDataset):
         sun = characterize_sources(sun)
         jupiter = characterize_sources(jupiter)
         
-        # Extract the horizon and apply a small +/- 15 degree rotation manually
+        # Extract the horizon
         hi, hv = extract_1d_horizon(stokes_i, stokes_v, topo_wcs)
-        rr = int(round(np.random.rand()*6-3))
-        hi = np.roll(hi, rr, axis=1)
-        hv = np.roll(hv, rr, axis=1)
-        
+        if augment:
+            ## The horizon is 72 bins of 5 degrees each, so +/-3 bins matches the
+            ## +/-15 degree rotation training_transform() applies to the images
+            rr = int(round(np.random.rand()*6-3))
+            hi = np.roll(hi, rr, axis=1)
+            hv = np.roll(hv, rr, axis=1)
+
         # Convert to output tuples
         finals = []
         for c in range(nchan):
@@ -407,7 +446,8 @@ class MultiChannelDataset(LWATVDataset):
         # Build full list of tensors and features
         finals = self._process_image_stack(self._metadata,
                                            self._stokes_i, self._stokes_v,
-                                           self.location, self.transform)
+                                           self.location, self.transform,
+                                           self.augment)
         
         for chan in range(self.nchan):
             ## Copy the header and make an update for the current frequency

@@ -113,7 +113,8 @@ if __name__ == "__main__":
         logger.info(f"BINARY - Total validation images: {len(val_paths)}")
         
         # Create datasets
-        train_dataset = data.LWATVDataset(train_paths, train_labels)
+        # Augmentation is training-only; the validation set stays deterministic
+        train_dataset = data.LWATVDataset(train_paths, train_labels, augment=True)
         val_dataset = data.LWATVDataset(val_paths, val_labels)
         
         # Train the model
@@ -167,7 +168,8 @@ if __name__ == "__main__":
     logger.info(f"MULTI - Total validation images: {len(val_paths)}")
     
     # Create datasets
-    train_dataset = data.LWATVDataset(train_paths, train_labels)
+    # Augmentation is training-only; the validation set stays deterministic
+    train_dataset = data.LWATVDataset(train_paths, train_labels, augment=True)
     val_dataset = data.LWATVDataset(val_paths, val_labels)
     
     # Train the model
