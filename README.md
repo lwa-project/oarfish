@@ -51,10 +51,11 @@ The multi-class model was trained on:
 
 The validation sets for both followed a 80/20 split for training/validation.
 
-For processing the The Stokes I and |V| images were normalized to 0 to the 99.75-th percentile of the
+For processing the Stokes I and |V| images were normalized to 0 to the 99.75-th percentile of the
 Stokes I image and resampled to a uniform size 256 by 256 pixels for pattern recognition.  In addition,
 key features were extracted from the images that traced the A team, the Sun/Jupiter, and characterized
-the horizon and sky contrast.
+the horizon and sky contrast.  The training also utilized augmentation through the `LWATVDataset.training_transform()` that is enabled on the data set-level using `augment=True`.
+This transform set adds image jitter and rotation to the training data.
 
 Using
 -----
@@ -62,7 +63,8 @@ The easiest way to use oarfish is through the `oarfish.data.MultiChannelDataset`
 classes.  `MultiChannelDataSet` is a PyToach `DataSet` sub-class that prepares a collection of NumPy
 array for pattern recognition and astronomical feature extraction.  `DualModelPredictor` wraps the model
 loading a prediction into a single object.  It loads in the binary and multi-class models, runs the
-prediction on a `DataSet`, and returns a full set of metrics.
+prediction on a `DataSet`, and returns a full set of metrics.  Runs of the classifier are deterministic
+as long as the data sets have `augment=False`.
 
 If you are working with Orville .oims files there is also a ZeroMQ-based server and client included with
 the scripts.
