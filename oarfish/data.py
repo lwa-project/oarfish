@@ -435,12 +435,15 @@ class MultiChannelDataset(LWATVDataset):
         
         return finals
         
-    def __getitem__(self, idx: int) -> Union[Tuple[torch.Tensor, torch.Tensor, torch.Tensor], 
-                                             Tuple[torch.Tensor, torch.Tensor, torch.Tensor, int]]:
-        if idx > self._stokes_i.shape[0]:
+    def __getitem__(self, idx: int) -> Union[Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Dict[str,Any]], 
+                                             Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Dict[str,Any], int]]:
+        if idx >= self._stokes_i.shape[0]:
             raise RuntimeError("Requested too many channels for this data set")
             
         if idx in self._cache:
+            if self.labels is not None:
+                label = self.labels[idx]
+                return *self._cache[idx], label
             return self._cache[idx]
             
         # Build full list of tensors and features
@@ -460,4 +463,7 @@ class MultiChannelDataset(LWATVDataset):
             
             self._cache[chan] = (img_tensor, hrz_tensor, astro_tensor, chan_info)
             
+        if self.labels is not None:
+            label = self.labels[idx]
+            return *self._cache[idx], label
         return self._cache[idx]

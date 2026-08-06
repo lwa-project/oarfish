@@ -240,7 +240,7 @@ class PredictionClient:
         """
         
         reshapeNeeded = False
-        if len(image_cube.shape) == 2:
+        if len(image_cube.shape) == 3:
             reshapeNeeded = True
             image_cube = image_cube.reshape(1, *image_cube.shape)
         if image_cube.dtype != np.float32:
