@@ -124,7 +124,7 @@ def extract_sky(stokes_i: np.ndarray, stokes_v: np.ndarray, topo_wcs: WCS) -> Tu
     if len(stokes_i.shape) == 2:
         reshape_needed = True
         stokes_i = stokes_i.reshape(1, *stokes_i.shape)
-        stokes_v = stokes_i.reshape(1, *stokes_v.shape)
+        stokes_v = stokes_v.reshape(1, *stokes_v.shape)
     nchan, xsize, ysize = stokes_i.shape
     
     az, alt = _topo_wcs_to_altaz(xsize, ysize, topo_wcs)
