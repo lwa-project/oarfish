@@ -69,6 +69,9 @@ if __name__ == "__main__":
                       help='early stopping patience')
     parser.add_argument('--multi-only', action='store_true',
                         help='only train the multi-class model')
+    parser.add_argument('--num-workers', type=int, default=None,
+                        help='data loading worker processes (default: sized from the '
+                             'CPUs available to this process)')
     parser.add_argument('--dataset-dir', type=str, default='.',
                         help='directory containing the binary and multi-class training/validation data')
     parser.add_argument('--checkpoint-dir', type=str, default='checkpoints',
@@ -126,7 +129,8 @@ if __name__ == "__main__":
             batch_size=args.batch_size,
             num_epochs=args.epochs,
             patience=args.patience,
-            checkpoint_dir=args.checkpoint_dir+'_binary'
+            checkpoint_dir=args.checkpoint_dir+'_binary',
+            num_workers=args.num_workers
         )
         
         # Run validation predictions on a few examples
@@ -181,7 +185,8 @@ if __name__ == "__main__":
         batch_size=args.batch_size,
         num_epochs=args.epochs,
         patience=args.patience,
-        checkpoint_dir=args.checkpoint_dir+'_multi'
+        checkpoint_dir=args.checkpoint_dir+'_multi',
+        num_workers=args.num_workers
     )
     
     # Run validation predictions on a few examples

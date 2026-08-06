@@ -283,20 +283,55 @@ def create_balanced_sampler(dataset: LWATVDataset) -> WeightedRandomSampler:
     return sampler
 
 
+def default_num_workers(maximum: int=8) -> int:
+    """
+    Number of DataLoader worker processes to use when the caller has not asked
+    for a particular count.
+
+    Preparing an image is expensive relative to the forward pass -- WCS work,
+    source extraction, and the astronomical features are all CPU-bound -- so
+    loading in the main process leaves the GPU idle for most of an epoch.
+
+    The count is taken from the CPUs this process is actually allowed to run
+    on rather than the CPUs the machine has, so that a run confined by taskset,
+    a cgroup, or a batch scheduler does not oversubscribe its allocation.  Two
+    are held back for the main process and the GPU feed, and the result is
+    capped since the gain flattens out well before it becomes worth the memory
+    each worker costs.  Small machines fall back to 0, which loads in-process.
+    """
+
+    try:
+        available = len(os.sched_getaffinity(0))
+    except AttributeError:
+        # Not Linux -- os.cpu_count() can return None on an unknown platform
+        available = os.cpu_count() or 1
+
+    return max(0, min(maximum, available - 2))
+
+
 def train_model(model: Type[nn.Module], model_trainer: Type[ModelTrainer],
                 train_dataset: LWATVDataset, val_dataset: LWATVDataset, batch_size: int=32,
-                num_epochs: int=10, patience: int=5, checkpoint_dir: str='checkpoints') -> nn.Module:
+                num_epochs: int=10, patience: int=5, checkpoint_dir: str='checkpoints',
+                num_workers: Optional[int]=None) -> nn.Module:
     """
     Train model with early stopping and checkpointing
-    
+
     Args:
         patience: Number of epochs to wait for improvement before early stopping
+        num_workers: DataLoader worker processes, or None to size it from the
+                     CPUs available to this process
     """
+    if num_workers is None:
+        num_workers = default_num_workers()
+    logger.info(f'Loading data with {num_workers} worker process(es)')
+
     # Create dataloaders
     train_sampler = create_balanced_sampler(train_dataset)
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=train_sampler)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=train_sampler,
+                              num_workers=num_workers)
     val_sampler = create_balanced_sampler(val_dataset)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, sampler=val_sampler)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, sampler=val_sampler,
+                            num_workers=num_workers)
     
     # Initialize model and trainer
     model = model()
