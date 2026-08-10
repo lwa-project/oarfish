@@ -477,8 +477,8 @@ def extract_jupiter(stokes_i: np.ndarray, stokes_v: np.ndarray, timestamp: Time,
     sc = get_body('jupiter', timestamp, location=location)
     sc = SkyCoord(sc.ra, sc.dec, frame='icrs')      # Otherwise we have problems with WCS
     d = pc.separation(sc)
-    jupiter_x, jupiter_y = wcs.world_to_pixel(sc)
-   
+    jupiter_y, jupiter_x = wcs.world_to_pixel(sc)
+
     results = []
     for c in range(nchan):
         regions = {}
