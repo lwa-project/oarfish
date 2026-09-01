@@ -196,8 +196,9 @@ class MultiLWATVClassifier(BaseLWATVClassifier):
      * corrupted
      * sun
      * jupiter
+     * lightning
     """
     def __init__(self):
-        super().__init__(num_classes=6, class_names=['good', 'medium_rfi', 'high_rfi', 'corrupted', 'sun', 'jupiter'])
+        super().__init__(num_classes=7, class_names=['good', 'medium_rfi', 'high_rfi', 'corrupted', 'sun', 'jupiter', 'lightning'])
     
     

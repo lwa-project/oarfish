@@ -68,6 +68,7 @@ class ImageClassifierApp:
                 'r': 'high_rfi',
                 's': 'sun',
                 'j': 'jupiter',
+                'l': 'lightning',
                 'c': 'corrupted',
             }
             
@@ -77,6 +78,7 @@ class ImageClassifierApp:
                 ("High RFI (r)", 'high_rfi'),
                 ("Sun (s)", 'sun'),
                 ("Jupiter (j)", 'jupiter'),
+                ("Lightning (l)", 'lightning'),
                 ("Corrupted (c)", 'corrupted'),
                 ("Skip (k)", None)
             ]
