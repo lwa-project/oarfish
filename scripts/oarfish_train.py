@@ -62,11 +62,11 @@ if __name__ == "__main__":
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
         )
     parser.add_argument('--batch_size', type=int, default=32,
-                      help='batch size for training')
+                        help='batch size for training')
     parser.add_argument('--epochs', type=int, default=30,
-                      help='number of epochs to train')
+                        help='number of epochs to train')
     parser.add_argument('--patience', type=int, default=5,
-                      help='early stopping patience')
+                        help='early stopping patience')
     parser.add_argument('--multi-only', action='store_true',
                         help='only train the multi-class model')
     parser.add_argument('--num-workers', type=int, default=None,
@@ -75,9 +75,11 @@ if __name__ == "__main__":
     parser.add_argument('--dataset-dir', type=str, default='.',
                         help='directory containing the binary and multi-class training/validation data')
     parser.add_argument('--checkpoint-dir', type=str, default='checkpoints',
-                      help='directory to save model checkpoints')
+                        help='directory to save model checkpoints')
     parser.add_argument('--log-dir', type=str, default='logs',
-                      help='directory to save training logs')
+                        help='directory to save training logs')
+    parser.add_argument('--good-prob', type=int,
+                        help='ensure each batch has this fraction of "good" images (multi only)')
     args = parser.parse_args()
     
     # Setup logging
@@ -130,7 +132,8 @@ if __name__ == "__main__":
             num_epochs=args.epochs,
             patience=args.patience,
             checkpoint_dir=args.checkpoint_dir+'_binary',
-            num_workers=args.num_workers
+            num_workers=args.num_workers,
+            good_prob=None
         )
         
         # Run validation predictions on a few examples
@@ -186,7 +189,8 @@ if __name__ == "__main__":
         num_epochs=args.epochs,
         patience=args.patience,
         checkpoint_dir=args.checkpoint_dir+'_multi',
-        num_workers=args.num_workers
+        num_workers=args.num_workers,
+        good_prob=args.good_prob
     )
     
     # Run validation predictions on a few examples

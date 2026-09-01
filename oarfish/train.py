@@ -68,10 +68,15 @@ class ModelTrainer:
         self.epochs_without_improvement = 0
         
     def save_checkpoint(self, epoch: int, val_acc: float, val_loss: float, val_cmatrix: torch.Tensor,
-                              path: str='checkpoints'):
+                              path: str='checkpoints', score: Optional[float]=None, score_type: str=None):
         """Save model checkpoint"""
         if self.tag:
             path += f"_{self.tag}"
+            
+        # If no score is provided, fall back to val_acc
+        if score is None:
+            score = val_acc
+            score_type = "val_acc"
             
         os.makedirs(path, exist_ok=True)
         checkpoint = {
@@ -82,14 +87,17 @@ class ModelTrainer:
             'optimizer_state_dict': self.optimizer.state_dict(),
             'val_acc': val_acc,
             'val_loss': val_loss,
-            'val_cmatrix': val_cmatrix
+            'val_cmatrix': val_cmatrix,
+            'val_score': score,
+            'val_score_type': score_type,
         }
         torch.save(checkpoint, os.path.join(path, f'model_epoch_{epoch}.pt'))
         
         # Save best model separately
-        if val_acc > self.best_val_acc:
+        if score > self.best_val_acc:
+            self.best_val_acc = score
             torch.save(checkpoint, os.path.join(path, 'best_model.pt'))
-            print(f"New best model saved! Validation accuracy: {val_acc:.2f}%")
+            print(f"New best model saved! Validation score: {score:.2f}% (accuracy: {val_acc:.2f}%)")
             
     def load_checkpoint(self, checkpoint_path: str) -> int:
         """Load model checkpoint"""
@@ -226,26 +234,32 @@ def create_sampler(dataset: LWATVDataset) -> WeightedRandomSampler:
     return sampler
 
 
-def create_balanced_sampler(dataset: LWATVDataset) -> WeightedRandomSampler:
+def create_balanced_sampler(dataset: LWATVDataset,
+                            good_prob: Optional[float]=None) -> WeightedRandomSampler:
     """
     Create a weighted sampler that ensures:
-    1. 50/50 split between 'good' and all other classes combined
+    1. `good_prob`/1-`good_prob` split between 'good' and all other classes combined
     2. At least one sample from each class in every batch
     3. Equal probability among non-'good' classes
     
+    If `good_prob` is not provided or None then equal weighthings are given to all
+    classes.
+    
     Args:
         dataset: Dataset containing (image, label) pairs
+        good_prob: Sampling probability for 'good', or None to weight every
+                   class equally
         
     Returns:
         WeightedRandomSampler instance
     """
-   
+    
     # Get all labels
     if hasattr(dataset, 'labels'):
         labels = dataset.labels
     else:
         labels = [label for _, _, label in dataset]
-    
+        
     # Count instances of each class
     class_counts = Counter(labels)
     
@@ -253,26 +267,30 @@ def create_balanced_sampler(dataset: LWATVDataset) -> WeightedRandomSampler:
     weights = []
     n_samples = len(labels)
     
-    # Split target probabilities: 0.5 for 'good', 0.5 for others combined
+    # Only classes that are actually present can be sampled
     good_idx = dataset.model.get_class_idx('good') if hasattr(dataset, 'model') else 0
-    n_classes = len(class_counts)
+    present = sorted(class_counts)
+    n_classes = len(present)
     
     # Calculate per-class target probabilities
     target_probs = {}
-    for class_idx in range(n_classes):
-        if class_idx == good_idx:
-            target_probs[class_idx] = 0.5
-        else:
-            # Distribute remaining 0.5 probability equally among non-good classes
-            target_probs[class_idx] = 0.5 / (n_classes - 1)
-    
+    if good_prob is None or n_classes < 2 or good_idx not in class_counts:
+        for class_idx in present:
+            target_probs[class_idx] = 1.0 / n_classes
+    else:
+        for class_idx in present:
+            if class_idx == good_idx:
+                target_probs[class_idx] = good_prob
+            else:
+                target_probs[class_idx] = (1.0 - good_prob) / (n_classes - 1)
+                
     # Calculate weights for each sample
     for label in labels:
         current_prob = class_counts[label] / n_samples
         target_prob = target_probs[label]
         weight = target_prob / current_prob
         weights.append(weight)
-    
+        
     # Create the sampler
     sampler = WeightedRandomSampler(
         weights=weights,
@@ -287,50 +305,55 @@ def default_num_workers(maximum: int=8) -> int:
     """
     Number of DataLoader worker processes to use when the caller has not asked
     for a particular count.
-
+    
     Preparing an image is expensive relative to the forward pass -- WCS work,
     source extraction, and the astronomical features are all CPU-bound -- so
     loading in the main process leaves the GPU idle for most of an epoch.
-
+    
     The count is taken from the CPUs this process is actually allowed to run
     on rather than the CPUs the machine has, so that a run confined by taskset,
     a cgroup, or a batch scheduler does not oversubscribe its allocation.  Two
     are held back for the main process and the GPU feed, and the result is
     capped since the gain flattens out well before it becomes worth the memory
     each worker costs.  Small machines fall back to 0, which loads in-process.
-    """
 
+    """
+    
     try:
         available = len(os.sched_getaffinity(0))
     except AttributeError:
         # Not Linux -- os.cpu_count() can return None on an unknown platform
         available = os.cpu_count() or 1
-
+        
     return max(0, min(maximum, available - 2))
 
 
 def train_model(model: Type[nn.Module], model_trainer: Type[ModelTrainer],
                 train_dataset: LWATVDataset, val_dataset: LWATVDataset, batch_size: int=32,
                 num_epochs: int=10, patience: int=5, checkpoint_dir: str='checkpoints',
-                num_workers: Optional[int]=None) -> nn.Module:
+                num_workers: Optional[int]=None, **kwds) -> nn.Module:
     """
     Train model with early stopping and checkpointing
-
+    
     Args:
         patience: Number of epochs to wait for improvement before early stopping
         num_workers: DataLoader worker processes, or None to size it from the
                      CPUs available to this process
     """
+    
     if num_workers is None:
         num_workers = default_num_workers()
     logger.info(f'Loading data with {num_workers} worker process(es)')
-
+    
     # Create dataloaders
-    train_sampler = create_balanced_sampler(train_dataset)
+    train_sampler = create_balanced_sampler(train_dataset, **kwds)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=train_sampler,
                               num_workers=num_workers)
-    val_sampler = create_balanced_sampler(val_dataset)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, sampler=val_sampler,
+    # Validation is scored on the split as it stands.  Weighting it the way the
+    # training sampler does made the reported accuracy a different bootstrap
+    # resample every epoch, and it counted 'good' for half the score, so a model
+    # that answered 'good' too often still looked like it was improving.
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False,
                             num_workers=num_workers)
     
     # Initialize model and trainer
@@ -338,44 +361,50 @@ def train_model(model: Type[nn.Module], model_trainer: Type[ModelTrainer],
     trainer = model_trainer(model, num_epochs=num_epochs, num_steps=len(train_loader))
     
     # Training loop
-    best_val_acc = 0
+    best_score = 0
     epochs_without_improvement = 0
     
     for epoch in range(num_epochs):
         train_loss, train_acc, train_cmatrix = trainer.train_epoch(train_loader)
         val_loss, val_acc, val_cmatrix = trainer.validate(val_loader)
         
+        # Mean per-class recall.  Plain accuracy on an unweighted split is
+        # mostly a measure of how well 'good' is doing, since 'good' is the
+        # largest class by some way; averaging the recalls gives a class the
+        # same say in the score whether it has 700 images or 13.
+        val_recall = float(np.nanmean(np.diag(val_cmatrix.numpy())))
+        
         logger.info(f'Epoch {epoch+1}/{num_epochs}:')
         logger.info(f'Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.2f}%')
-        logger.info(f'Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.2f}%')
-    
+        logger.info(f'Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.2f}%, Val Mean Recall: {val_recall:.2f}%')
+        
         # Log per-class accuracies
         for i, class_name in enumerate(model.class_names):
             logger.info(f'  {class_name} - Train: {train_cmatrix[i,i]:.2f}%,'
                         f'  Val: {val_cmatrix[i,i]:.2f}%')
-       
+        
         #if epoch % 5 == 0:
             #analyze_feature_importance(model, val_loader, trainer.device)
-        
-        # Save checkpoint if validation accuracy improves
-        if val_acc > best_val_acc:
-            best_val_acc = val_acc
+            
+        # Save checkpoint if validation improves
+        if val_recall > best_score:
+            best_score = val_recall
             epochs_without_improvement = 0
-            trainer.save_checkpoint(epoch + 1, val_acc, val_loss, val_cmatrix, checkpoint_dir)
+            trainer.save_checkpoint(epoch + 1, val_acc, val_loss, val_cmatrix, checkpoint_dir, score=val_recall, score_type='mean_recall')
         else:
             epochs_without_improvement += 1
-        
+            
         # Early stopping check
         if epochs_without_improvement >= patience:
             logger.info(f'Early stopping triggered! No improvement for {patience} epochs.')
             break
-    
+            
     # Load best model before returning
     best_model_path = os.path.join(checkpoint_dir, 'best_model.pt')
     if os.path.exists(best_model_path):
         logger.info('Loading best model from checkpoints...')
         trainer.load_checkpoint(best_model_path)
-    
+        
     return model
 
 
