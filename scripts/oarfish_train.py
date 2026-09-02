@@ -69,6 +69,8 @@ if __name__ == "__main__":
                         help='early stopping patience')
     parser.add_argument('--multi-only', action='store_true',
                         help='only train the multi-class model')
+    parser.add_argument('--binary-only', action='store_true',
+                        help='only train the binary model')
     parser.add_argument('--num-workers', type=int, default=None,
                         help='data loading worker processes (default: sized from the '
                              'CPUs available to this process)')
@@ -151,6 +153,9 @@ if __name__ == "__main__":
                 f"BINARY - Predicted: {prediction} | "
                 f"BINARY - Confidence: {confidence:.2f}"
             )
+        
+    if args.binary_only:
+        sys.exit(0)
         
     # Part 2 -  Multi Classifier
     m = classify.MultiLWATVClassifier()
