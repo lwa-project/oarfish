@@ -103,7 +103,10 @@ class ModelTrainer:
         """Load model checkpoint"""
         checkpoint = torch.load(checkpoint_path, weights_only=False)
         if 'code_checksum' in checkpoint:
-            if checkpoint['code_checksum'] != CODE_CHECKSUM:
+            cp_data_utils = ','.join([c for i,c in enumerate(checkpoint['code_checksum'].split(',') if i in (0,1,3)])
+            py_data_utils = ','.join([c for i,c in enumerate(CODE_CHECKSUM.split(',') if i in (0,1,3)])
+            
+            if cp_data_utils != py_data_utils:
                 print("Warning: checksum mis-match between software and checkpoint data")
         else:
             print("Warning: no checksum found in the checkpoint data")
