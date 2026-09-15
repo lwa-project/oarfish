@@ -324,8 +324,10 @@ class DualModelPredictor:
                         'center_freq': info.get('start_freq', 0),
                         'binary_prediction': self.binary_model.get_class_name(binary_pred),
                         'binary_confidence': binary_conf,
+                        'binary_class_probs': binary_class_probs,
                         'multi_prediction': self.multi_model.get_class_name(multi_pred),
                         'multi_confidence': multi_conf,
+                        'multi_class_probs': multi_class_probs,
                         'multi_top2': top2,
                         'quality_score': quality_score,
                         'final_label': final_label
