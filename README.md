@@ -14,8 +14,9 @@ and tries to distinguish between:
  * medium RFI images - images where the brightest is comparable to that of "A team" soures,
  * high RFI images - where the RFI is brigher than anything else in the sky,
  * corrupted images that are likely caused by instrumental problems,
- * images where the Sun is flaring, and
- * images where Jupiter is bursting.
+ * images where the Sun is flaring,
+ * images where Jupiter is bursting, and
+ * images with lightning.
 
 The first stage is good for separating images that can generally be used for science from those that
 cannot but it cannot be used to determine what the RFI environment is like beyond good vs. bad.  The
@@ -40,16 +41,19 @@ Training
 The two models included with the library are trained using a collection of images pulled from the [LWA1 PASI archive](https://lda10g.alliance.unm.edu/PASI/) and the 
 [LWA-SV Orville archive](https://lda10g.alliance.unm.edu/Orville/)[^1].  These images
 span the full range of time and frequency that Orville has been operating over at
-Sevilleta.  For the binary classifier a training set of roughly 2000 good and 2400 bad images was used.
-The multi-class model was trained on:
+Sevilleta.  For the binary classifier a training set of roughly 2500 good and 3700 bad images was
+used, where the bad set includes the corrupted, Sun, Jupiter, and lightning images.  The multi-
+class model was trained on:
  * roughly 2200 RFI-free images,
- * about 1600 low to medium RFI images,
+ * about 1650 low to medium RFI images,
  * ~1000 high RFI images,
  * a little under 1000 corrupted images,
- * about 230 images where the Sun was flaring, and
- * almost 45 images where Jupiter was bursting.
+ * about 340 images where the Sun was flaring,
+ * almost 200 images where Jupiter was bursting, and
+ * about 340 images with lightning.
 
-The validation sets for both followed a 80/20 split for training/validation.
+The validation sets for both followed a roughly 75/25 split for training/validation.  All training
+and validation data can be found at https://fornax.phys.unm.edu/lwa/data/oarfish/.
 
 For processing the Stokes I and |V| images were normalized to 0 to the 99.75-th percentile of the
 Stokes I image and resampled to a uniform size 256 by 256 pixels for pattern recognition.  In addition,
