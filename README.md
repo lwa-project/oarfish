@@ -52,8 +52,9 @@ class model was trained on:
  * almost 200 images where Jupiter was bursting, and
  * about 340 images with lightning.
 
-The validation sets for both followed a roughly 75/25 split for training/validation.  All training
-and validation data can be found at https://fornax.phys.unm.edu/lwa/data/oarfish/.
+Examples of each class can be found in `examples/`.  The validation sets for both followed a
+roughly 75/25 split for training/validation.  All training and validation data can be found at
+https://fornax.phys.unm.edu/lwa/data/oarfish/.
 
 For processing the Stokes I and |V| images were normalized to 0 to the 99.75-th percentile of the
 Stokes I image and resampled to a uniform size 256 by 256 pixels for pattern recognition.  In addition,
