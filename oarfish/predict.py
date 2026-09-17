@@ -217,7 +217,8 @@ class DualModelPredictor:
         q /= 2.25
         
         # Determine final label based on a combination of the first multi-
-        # class label and quality score
+        # class label and quality score.  Updated on 2026 Sep 17 to reflect
+        # more testing on how I rank images.
         if first_class in ('sun', 'jupiter') and first[1] > 0.6:
             ## Looks like a special class, go with it
             final = first_class
@@ -225,9 +226,9 @@ class DualModelPredictor:
             ## Nope, use the usual quality score metrics
             if q > 0.75:
                 final = 'good'
-            elif q > 0.5:
+            elif q > 0.4:
                 final = 'low_rfi'
-            elif q > 0.3:
+            elif q > 0.08:
                 final = 'medium_rfi'
             else:
                 final = first_class
